@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("java") // Java support
@@ -48,6 +49,11 @@ dependencies {
         bundledModules(providers.gradleProperty("platformBundledModules").map { it.split(',') })
 
         testFramework(TestFrameworkType.Platform)
+
+        implementation("dev.langchain4j:langchain4j:0.35.0")
+        implementation("dev.langchain4j:langchain4j-qwen:0.35.0")
+        implementation("org.apache.tika:tika-core:2.9.2")
+        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:0.35.0")
     }
 }
 
@@ -127,13 +133,34 @@ kover {
 }
 
 tasks {
+    withType<JavaCompile> {
+        options.encoding = "UTF-8"
+    }
+
+    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+    }
+
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
+    }
+
+    patchPluginXml {
+        sinceBuild = providers.gradleProperty("pluginSinceBuild").get()
+        untilBuild = "252.*"
+    }
+
+    signPlugin {
+        certificateChain = System.getenv("CERTIFICATE_CHAIN")
+        privateKey = System.getenv("PRIVATE_KEY")
+        password = System.getenv("PRIVATE_KEY_PASSWORD")
     }
 
     publishPlugin {
         dependsOn(patchChangelog)
     }
+
+
 }
 
 intellijPlatformTesting {

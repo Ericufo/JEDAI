@@ -4,12 +4,38 @@
     <name>JEDAI</name>
     <vendor>ericufo</vendor>
 
+    <description>
+        JEDAI: AI Coding Assistant for Java Enterprise Application Development.
+        Provides RAG-based QA and code modification features.
+    </description>
+
+    <change-notes>
+        Initial release.
+    </change-notes>
+
+    <idea-version since-build="252" until-build="252.*"/>
+
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow factoryClass="com.github.ericufo.jedai.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
         <postStartupActivity implementation="com.github.ericufo.jedai.startup.MyProjectActivity" />
+    </extensions>
+
+    <actions>
+        <action id="com.jedai.AskTAAction" class="com.jedai.AskTAAction" text="Ask JEDAI TA">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+    </actions>
+
+    <applicationListeners>
+        <!-- TO BE DONE -->
+    </applicationListeners>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- TO BE DONE -->
     </extensions>
 </idea-plugin>
