@@ -50,10 +50,10 @@ dependencies {
 
         testFramework(TestFrameworkType.Platform)
 
-        implementation("dev.langchain4j:langchain4j:0.35.0")
-        implementation("dev.langchain4j:langchain4j-open-ai:0.35.0")
+        implementation("dev.langchain4j:langchain4j:1.8.0")
+        implementation("dev.langchain4j:langchain4j-open-ai:1.8.0")
         implementation("org.apache.tika:tika-core:2.9.2")
-        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:0.35.0")
+        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:1.8.0")
     }
 }
 
