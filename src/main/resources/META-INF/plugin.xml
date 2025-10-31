@@ -23,7 +23,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- JEDAI ToolWindow -->
         <toolWindow 
-            factoryClass="com.github.ericufo.jedai.toolWindow.MyToolWindowFactory" 
+            factoryClass="com.github.ericufo.jedai.toolWindow.JedaiToolWindowFactory" 
             id="JEDAI"
             anchor="right"
             secondary="true"/>
