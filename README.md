@@ -56,6 +56,48 @@ To keep everything working, do not remove `<!-- ... -->` sections.
    }
    ```
 
+**2025-11-1 更新**
+1. **已完成工作**
+   - **LLM集成**: 成功集成DeepSeek V3.2-exp API
+     - 使用LangChain4j框架
+     - API Key优先级：环境变量 > 系统属性 > 代码默认值
+     - 单例模式缓存模型实例（性能优化）
+     - 智能降级机制（LLM失败时自动使用示例实现）
+   
+   - **核心功能**:
+     - AI驱动的代码修改（选中代码 → 右键 → "Modify Code with JEDAI"）
+     - 自动代码格式化（应用修改后自动格式化）
+     - 自定义指令模板系统（持久化存储，支持添加/删除/管理）
+     - 批量修改支持（API已实现：`proposeBatchChanges()`）
+     - 完整的修改历史功能（Tools → View JEDAI Modification History）
+       - 查看历史Diff
+       - 重放历史修改（已修复：现可正确回退到历史代码）
+       - 搜索和清空历史
+   
+   - **目前测试方式**:
+     ```bash
+     # 可选：设置环境变量（代码中已有默认值）
+     export DEEPSEEK_API_KEY="sk-4hrklq5w3w4x7bcz"
+
+     # 启动插件
+     ./gradlew runIde
+     
+     # 使用功能
+     # 1. 选中代码 → 右键 → "Modify Code with JEDAI"
+     # 2. 输入指令或选择模板
+     # 3. 查看Diff → 应用修改
+     # 4. Tools → View JEDAI Modification History 查看历史
+     ```
+
+     需注意的是：
+     由于使用的是免费LLM服务，服务速率有所限制，详情如下：
+
+     RPM=12、RPD=300、TPM=12000；
+
+     服务提供商：无问芯穹<https://docs.infini-ai.com/>
+     
+     LLM模型选择：DeepSeek V3.2-exp
+
 ## Installation
 
 - Using the IDE built-in plugin system:

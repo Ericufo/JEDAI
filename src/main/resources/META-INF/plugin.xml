@@ -30,6 +30,10 @@
         
         <!-- Startup Activity -->
         <postStartupActivity implementation="com.github.ericufo.jedai.startup.MyProjectActivity" />
+        
+        <!-- 指令模板管理器服务 -->
+        <applicationService 
+            serviceImplementation="com.github.ericufo.jedai.mod.InstructionTemplateManager"/>
     </extensions>
 
     <actions>
@@ -49,6 +53,15 @@
             text="Modify Code with JEDAI"
             description="Request AI to modify the selected code (refactor, fix bugs, apply design patterns)">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        
+        <!-- Tools菜单：查看修改历史 -->
+        <action 
+            id="com.github.ericufo.jedai.ViewModificationHistoryAction" 
+            class="com.github.ericufo.jedai.actions.ViewModificationHistoryAction" 
+            text="View JEDAI Modification History"
+            description="View history of code modifications made by JEDAI">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
 
