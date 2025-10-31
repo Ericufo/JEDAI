@@ -46,10 +46,10 @@ dependencies {
     intellijPlatform {
 
         // 使用本地IDEA安装路径
-        local("D:\\Program Files\\IDEA\\IntelliJ IDEA 2025.2.3")
+        //local("D:\\Program Files\\IDEA\\IntelliJ IDEA 2025.2.3")
 
         // 如果需要使用远程版本，可以取消注释下面的行：
-        //create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
+        create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
 
         // Plugin Dependencies. Uses `platformBundledPlugins` property from the gradle.properties file for bundled IntelliJ Platform plugins.
         bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
