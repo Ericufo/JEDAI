@@ -21,21 +21,35 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.ericufo.jedai.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <!-- JEDAI ToolWindow -->
+        <toolWindow 
+            factoryClass="com.github.ericufo.jedai.toolWindow.MyToolWindowFactory" 
+            id="JEDAI"
+            anchor="right"
+            secondary="true"/>
+        
+        <!-- Startup Activity -->
         <postStartupActivity implementation="com.github.ericufo.jedai.startup.MyProjectActivity" />
     </extensions>
 
     <actions>
-        <action id="com.jedai.AskTAAction" class="com.jedai.AskTAAction" text="Ask JEDAI TA">
-            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        <!-- 右键菜单：询问选中代码相关问题 -->
+        <action 
+            id="com.github.ericufo.jedai.AskWithSelectionAction" 
+            class="com.github.ericufo.jedai.actions.AskWithSelectionAction" 
+            text="Ask JEDAI about Selection"
+            description="Ask JEDAI Teaching Assistant a question about the selected code">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        
+        <!-- 右键菜单：请求AI修改代码（F2功能） -->
+        <action 
+            id="com.github.ericufo.jedai.ModifyCodeAction" 
+            class="com.github.ericufo.jedai.actions.ModifyCodeAction" 
+            text="Modify Code with JEDAI"
+            description="Request AI to modify the selected code (refactor, fix bugs, apply design patterns)">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>
 
-    <applicationListeners>
-        <!-- TO BE DONE -->
-    </applicationListeners>
-
-    <extensions defaultExtensionNs="com.intellij">
-        <!-- TO BE DONE -->
-    </extensions>
 </idea-plugin>
