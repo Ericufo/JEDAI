@@ -18,8 +18,6 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
-
     <extensions defaultExtensionNs="com.intellij">
         <!-- JEDAI ToolWindow -->
         <toolWindow 
@@ -27,9 +25,6 @@
             id="JEDAI"
             anchor="right"
             secondary="true"/>
-        
-        <!-- Startup Activity -->
-        <postStartupActivity implementation="com.github.ericufo.jedai.startup.MyProjectActivity" />
         
         <!-- 指令模板管理器服务 -->
         <applicationService 

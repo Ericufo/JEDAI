@@ -156,6 +156,11 @@ tasks {
        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
    }
 
+   // 禁用自动测试（项目采用手动测试）
+   test {
+       enabled = false
+   }
+
    wrapper {
        gradleVersion = providers.gradleProperty("gradleVersion").get()
    }

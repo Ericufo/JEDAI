@@ -105,6 +105,10 @@ To keep everything working, do not remove `<!-- ... -->` sections.
 
      LLM 模型选择：DeepSeek V3.2-exp
 
+2.**修复工作**
+   - 去除无用的系统模版，去除注册项
+   - 去除test，若后续开发有所需要再重新写
+
 **2025-11-1 更新（part B：聊天界面与对话管理）**
 
 1. **聊天界面完善**
