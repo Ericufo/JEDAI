@@ -29,6 +29,8 @@
         <!-- 指令模板管理器服务 -->
         <applicationService 
             serviceImplementation="com.github.ericufo.jedai.mod.InstructionTemplateManager"/>
+
+        <postStartupActivity implementation="com.github.ericufo.jedai.rag.impl.RagIndexerStartupActivity"/>
     </extensions>
 
     <actions>

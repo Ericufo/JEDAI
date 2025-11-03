@@ -5,93 +5,169 @@ import com.github.ericufo.jedai.rag.IndexStats;
 import com.github.ericufo.jedai.rag.RagIndexer;
 import com.intellij.openapi.diagnostic.Logger;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.bgesmallenv15q.BgeSmallEnV15QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
-/**
- * RAG 索引器的简单实现（骨架）
- * TODO: 成员A需要实现具体的索引逻辑
- */
 public class SimpleRagIndexer implements RagIndexer {
     private static final Logger LOG = Logger.getInstance(SimpleRagIndexer.class);
 
     private static final InMemoryEmbeddingStore<TextSegment> EMBEDDING_STORE = new InMemoryEmbeddingStore<>();
-    private static boolean indexed = false;
+    //private static boolean indexed = false;
+    private static final Path INDEX_FILE_PATH = Paths.get("rag_materials_cache.json");
+
+    static {
+        // Load from persistent file if exists
+        if (Files.exists(INDEX_FILE_PATH)) {
+            try {
+                String json = Files.readString(INDEX_FILE_PATH);
+                if (!json.isEmpty()) {
+                    EMBEDDING_STORE.fromJson(json);
+                }
+            } catch (IOException e) {
+                LOG.error("Failed to load index from file", e);
+            }
+        }
+    }
+
+    /**
+     *  create AllMiniLmL6V2QuantizedEmbeddingModel
+     */
+    private static EmbeddingModel createEmbeddingModel() {
+        ClassLoader cl = SimpleRagIndexer.class.getClassLoader();
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(cl);
+            return new AllMiniLmL6V2QuantizedEmbeddingModel();
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
+        }
+    }
+
+    public static EmbeddingStore<TextSegment> getEmbeddingStore() {
+        return EMBEDDING_STORE;
+    }
 
     @Override
     public IndexStats index(List<CourseMaterial> materials) {
         LOG.info("索引课程材料：" + materials.size() + " 个文件");
-        // TODO: 实现文本抽取、分块、索引逻辑
-        // 1. 提取文本（PDFBox/Tika）
-        // 2. 分块（保留页码信息）
-        // 3. 建立索引（Lucene或向量索引）
 
         long startTime = System.currentTimeMillis();
 
-        List<Document> documents = new ArrayList<>();
+        List<TextSegment> allSegments = new ArrayList<>();
         for (CourseMaterial material : materials) {
             Path path = material.getFile().toPath();
-            DocumentParser parser = getParser(material.getType());
-            Document document = loadDocument(path, parser);
-            documents.add(document);
+            String fileName = material.getFile().getName();
+            List<TextSegment> segments = parseAndSplit(material, path, fileName);
+            allSegments.addAll(segments);
         }
 
-        DocumentSplitter splitter = DocumentSplitters.recursive(300, 0);
-        List<TextSegment> segments = splitter.splitAll(documents);
-
-        EmbeddingModel embeddingModel = new BgeSmallEnV15QuantizedEmbeddingModel();
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+        EmbeddingModel embeddingModel = createEmbeddingModel();
+        List<Embedding> embeddings = embeddingModel.embedAll(allSegments).content();
 
         EMBEDDING_STORE.removeAll();
-        EMBEDDING_STORE.addAll(embeddings, segments);
-        indexed = true;
+        EMBEDDING_STORE.addAll(embeddings, allSegments);
+
+        // Persist to file
+        try {
+            Files.writeString(INDEX_FILE_PATH, EMBEDDING_STORE.serializeToJson());
+        } catch (IOException e) {
+            LOG.error("Failed to save index to file", e);
+        }
 
         long indexingTime = System.currentTimeMillis() - startTime;
 
-        return new IndexStats(materials.size(), segments.size(), indexingTime);
+        return new IndexStats(materials.size(), allSegments.size(), indexingTime);
     }
 
-    private DocumentParser getParser(CourseMaterial.MaterialType type) {
-        switch (type) {
-            case PDF:
-                //return new ApachePdfBoxDocumentParser();
-            case MARKDOWN:
-                //return new MarkdownDocumentParser();
-            case TEXT:
-                return new TextDocumentParser();
-            default:
-                throw new IllegalArgumentException("Unsupported material type: " + type);
+    private List<TextSegment> parseAndSplit(CourseMaterial material, Path path, String fileName) {
+        List<TextSegment> segments = new ArrayList<>();
+        CourseMaterial.MaterialType type = material.getType();
+        DocumentSplitter splitter = DocumentSplitters.recursive(500, 100); // 统一切割器：最大500字符，重叠100
+
+        try {
+            switch (type) {
+                case PDF:
+                    try (PDDocument pdfDocument = PDDocument.load(material.getFile())) {
+                        PDFTextStripper stripper = new PDFTextStripper();
+                        for (int page = 1; page <= pdfDocument.getNumberOfPages(); page++) {
+                            stripper.setStartPage(page);
+                            stripper.setEndPage(page);
+                            String pageText = stripper.getText(pdfDocument);
+                            if (!pageText.trim().isEmpty()) {
+                                Document pageDoc = new Document(pageText);
+                                List<TextSegment> pageSegments = splitter.split(pageDoc);
+                                for (TextSegment seg : pageSegments) {
+                                    Metadata metadata = seg.metadata()
+                                            .add("file_name", fileName)
+                                            .add("page_number", page)
+                                            .add("page_range", page + "-" + page);
+                                    segments.add(TextSegment.from(seg.text(), metadata));
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case TEXT:
+                    Document textDoc = loadDocument(path, new TextDocumentParser());
+                    List<TextSegment> textSegments = splitter.split(textDoc);
+                    for (TextSegment seg : textSegments) {
+                        Metadata metadata = seg.metadata()
+                                .add("file_name", fileName)
+                                .add("page_number", 1)
+                                .add("page_range", "1-1");
+                        segments.add(TextSegment.from(seg.text(), metadata));
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported material type: " + type);
+            }
+        } catch (IOException e) {
+            LOG.error("Failed to parse document: " + fileName, e);
         }
+
+        return segments;
     }
 
-    public static InMemoryEmbeddingStore<TextSegment> getEmbeddingStore() {
-        return EMBEDDING_STORE;
-    }
     
     @Override
     public boolean isIndexed() {
-        // TODO: 检查索引是否存在
-        return indexed;
+        try {
+            return Files.exists(INDEX_FILE_PATH) && !Files.readString(INDEX_FILE_PATH).isEmpty();
+        } catch (IOException e) {
+            LOG.error("Failed to check index file", e);
+            return false;
+        }
     }
     
     @Override
     public void clearIndex() {
-        // TODO: 清除索引
         EMBEDDING_STORE.removeAll();
-        indexed = false;
+        try {
+            Files.deleteIfExists(INDEX_FILE_PATH);
+        } catch (IOException e) {
+            LOG.error("Failed to delete index file", e);
+        }
         LOG.info("清除索引");
     }
 }

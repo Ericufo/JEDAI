@@ -1,0 +1,134 @@
+package com.github.ericufo.jedai.rag.impl;
+
+import com.github.ericufo.jedai.rag.CourseMaterial;
+import com.github.ericufo.jedai.rag.RagIndexer;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.startup.StartupActivity;
+import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.google.gson.Gson;
+
+/**
+ * Automatically build RAG index when the project is opened
+ */
+public class RagIndexerStartupActivity implements StartupActivity {
+    private static final Logger LOG = Logger.getInstance(RagIndexerStartupActivity.class);
+    private static final String MATERIALS_CACHE_FILE = "rag_materials_cache.json"; // Material cache file, fixed in root directory
+
+    @Override
+    public void runActivity(@NotNull Project project) {
+        try {
+            Path basePath = Paths.get(project.getBasePath());
+            Path cachePath = basePath.resolve(MATERIALS_CACHE_FILE);
+
+            RagIndexer indexer = new SimpleRagIndexer();
+
+            // Collect materials
+            List<CourseMaterial> materials = collectCourseMaterials(project);
+
+            // Check if materials have changed
+            if (materialsChanged(materials, cachePath)) {
+                LOG.info("Detected changes in course materials, clearing and rebuilding index");
+                indexer.clearIndex();
+                updateMaterialsCache(materials, cachePath);
+            } else if (indexer.isIndexed()) {
+                LOG.info("RAG index already exists and materials unchanged, skipping build");
+                return;
+            }
+
+            if (materials.isEmpty()) {
+                LOG.warn("No course material files found, unable to build index");
+                return;
+            }
+
+            // Call index method to build index
+            indexer.index(materials);
+            updateMaterialsCache(materials, cachePath); // Update cache
+            LOG.info("RAG index build completed");
+        } catch (Exception e) {
+            LOG.error("Failed to build RAG index", e);
+        }
+    }
+
+    /**
+     * Collect course material files in the project
+     * Example: Assume materials are in the "slides" folder under the project root, supporting PDF and Text (Markdown not supported)
+     */
+    private List<CourseMaterial> collectCourseMaterials(Project project) {
+        List<CourseMaterial> materials = new ArrayList<>();
+        String basePath = project.getBasePath();
+        LOG.info("Project base path: " + basePath);
+        File baseDir = new File(basePath, "slides");
+        LOG.info("Slides directory path: " + baseDir.getAbsolutePath() + ", exists: " + baseDir.exists() + ", isDirectory: " + baseDir.isDirectory());
+        if (baseDir.exists() && baseDir.isDirectory()) {
+            File[] files = baseDir.listFiles();
+            LOG.info("Found files in slides: " + (files != null ? files.length : "null"));
+            if (files != null) {
+                for (File file : files) {
+                    String name = file.getName().toLowerCase();
+                    LOG.info("Processing file: " + file.getName() + ", lower: " + name);
+                    CourseMaterial.MaterialType type = null;
+                    if (name.endsWith(".pdf")) {
+                        type = CourseMaterial.MaterialType.PDF;
+                    } else if (name.endsWith(".txt")) {
+                        type = CourseMaterial.MaterialType.TEXT;
+                    }
+                    if (type != null) {
+                        materials.add(new CourseMaterial(file, type));
+                    }
+                }
+            }
+        } else {
+            LOG.warn("Slides directory does not exist or is not a directory.");
+        }
+        LOG.info("Collected materials count: " + materials.size());
+        return materials;
+    }
+
+    /**
+     * Check if materials have changed: Compare file list and last modified time
+     */
+    private boolean materialsChanged(List<CourseMaterial> currentMaterials, Path cachePath) throws IOException {
+        if (!Files.exists(cachePath)) {
+            return true; // No cache, considered as changed
+        }
+        String json = Files.readString(cachePath);
+        Gson gson = new Gson();
+        @SuppressWarnings("unchecked")
+        Map<String, Long> cached = gson.fromJson(json, HashMap.class);
+
+        Map<String, Long> currentMap = new HashMap<>();
+        for (CourseMaterial mat : currentMaterials) {
+            String filePath = mat.getFile().getAbsolutePath();
+            long lastModified = mat.getFile().lastModified();
+            currentMap.put(filePath, lastModified);
+        }
+
+        return !currentMap.equals(cached);
+    }
+
+    /**
+     * Update material cache
+     */
+    private void updateMaterialsCache(List<CourseMaterial> materials, Path cachePath) throws IOException {
+        Map<String, Long> cacheMap = new HashMap<>();
+        for (CourseMaterial mat : materials) {
+            String filePath = mat.getFile().getAbsolutePath();
+            long lastModified = mat.getFile().lastModified();
+            cacheMap.put(filePath, lastModified);
+        }
+        Gson gson = new Gson();
+        Files.writeString(cachePath, gson.toJson(cacheMap));
+    }
+}
