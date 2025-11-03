@@ -62,14 +62,14 @@ dependencies {
 
         testFramework(TestFrameworkType.Platform)
 
-        implementation("dev.langchain4j:langchain4j:0.35.0")
-        implementation("dev.langchain4j:langchain4j-open-ai:0.35.0")
+        implementation("dev.langchain4j:langchain4j:1.8.0")
+        implementation("dev.langchain4j:langchain4j-open-ai:1.8.0")
         implementation("org.apache.tika:tika-core:2.9.2")
         implementation("org.apache.pdfbox:pdfbox:2.0.31")
         //implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:0.35.0")
         //implementation("dev.langchain4j:langchain4j-embeddings-bge-small-en-v15-q:0.35.0")
         //implementation("dev.langchain4j:langchain4j-easy-rag:1.0.0-beta3")
-        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2-q:0.35.0")
+        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2-q:1.8.0")
         implementation("org.slf4j:slf4j-simple:2.0.16")
     }
 }
