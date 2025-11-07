@@ -2,6 +2,9 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 plugins {
     id("java") // Java support
@@ -186,16 +189,44 @@ tasks {
    }
 
     named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("prepareSandbox") {
+        // 在配置阶段捕获值，避免在执行阶段访问 project
+        val projectDirPath = project.projectDir.toPath()
+        
         doLast {
-            val sandboxPath = sandboxDirectory.get().asFile.path  // 正确获取沙盒路径
-            copy {
-                from("slides")
-                into("$sandboxPath/slides")
+            // 使用 Java Files API，兼容配置缓存
+            val sandboxPath = sandboxDirectory.get().asFile.toPath()
+            val slidesSource = projectDirPath.resolve("slides")
+            val slidesTarget = sandboxPath.resolve("slides")
+            
+            if (Files.exists(slidesSource)) {
+                // 创建目标目录
+                Files.createDirectories(slidesTarget)
+                
+                // 复制文件
+                Files.walk(slidesSource).use { paths ->
+                    paths.forEach { source ->
+                        val target = slidesTarget.resolve(slidesSource.relativize(source))
+                        if (Files.isDirectory(source)) {
+                            Files.createDirectories(target)
+                        } else {
+                            Files.copy(
+                                source, 
+                                target, 
+                                StandardCopyOption.REPLACE_EXISTING
+                            )
+                        }
+                    }
+                }
+                
+                // 调试输出
+                val filesList = Files.list(slidesTarget).use { stream ->
+                    stream.map { it.fileName.toString() }.toList()
+                }
+                println("Copied slides to: $slidesTarget")
+                println("Files: ${filesList.joinToString()}")
+            } else {
+                println("Warning: slides directory not found at $slidesSource")
             }
-            // used to debug
-            val copiedDir = file("$sandboxPath/slides")
-            println("Copied slides exists: ${copiedDir.exists()}, files: ${copiedDir.list()?.joinToString() ?: "none"}")
-            println("Copied slides folder to sandbox: $sandboxPath/slides")
         }
     }
 
