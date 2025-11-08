@@ -38,7 +38,9 @@ public class SimpleRagRetriever implements RagRetriever {
         List<EmbeddingMatch<TextSegment>> matches = EMBEDDING_STORE.findRelevant(queryEmbedding, k);
 
         List<RetrievedChunk> chunks = new ArrayList<>();
+        double threshold = 0.85; // maybe need to be tested later
         for (EmbeddingMatch<TextSegment> match : matches) {
+            if (match.score() < threshold) continue;
             TextSegment segment = match.embedded();
             String content = segment.text();
             String sourceDoc = segment.metadata().getString("file_name");

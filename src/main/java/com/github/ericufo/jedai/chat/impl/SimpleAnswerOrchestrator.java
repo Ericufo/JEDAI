@@ -52,6 +52,7 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
     private static final String SYSTEM_PROMPT = "You are a helpful teaching assistant for a Java Enterprise Application Development course. "
             +
             "Answer student questions based on the provided course materials and conversation history. " +
+            "If no course materials are provided, use general Java knowledge and best practices to provide educational answers, and clearly indicate that the response is based on general knowledge rather than course-specific materials." +
             "Be clear, concise, and educational in your responses. " +
             "\n\nIMPORTANT FORMATTING RULES:\n" +
             "- Use plain text only. Do NOT use Markdown formatting symbols.\n" +
@@ -243,7 +244,7 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
             message.append("Be specific and reference the concepts from the materials.");
         } else {
             message.append("No specific course materials were found for this question. ");
-            message.append("Please provide a helpful answer based on general Java knowledge.");
+            message.append("Since no course materials were found, please provide a detailed, step-by-step explanation based on standard Java and Spring knowledge from official sources like Spring documentation. Structure the answer with key concepts, examples, and best practices.");
         }
 
         return message.toString();
