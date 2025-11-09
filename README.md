@@ -153,6 +153,14 @@ To keep everything working, do not remove `<!-- ... -->` sections.
    # 2. 输入问题 → 自动在聊天窗口显示答案
    ```
 
+**2025-11-9 更新**
+
+- 实现流式答案显示（类似 GPT 逐字输出）
+- 新增主题切换功能
+- 新增用户字体大小调整功能（5 档可选）
+
+问题：当前课程材料检索的准确度？？
+
 ## Installation
 
 - Using the IDE built-in plugin system:

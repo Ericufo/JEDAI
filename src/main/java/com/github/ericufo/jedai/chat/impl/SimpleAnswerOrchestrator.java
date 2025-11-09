@@ -3,10 +3,13 @@ package com.github.ericufo.jedai.chat.impl;
 import com.github.ericufo.jedai.chat.Answer;
 import com.github.ericufo.jedai.chat.AnswerOrchestrator;
 import com.github.ericufo.jedai.chat.IdeContext;
+import com.github.ericufo.jedai.chat.StreamingAnswerHandler;
 import com.github.ericufo.jedai.rag.RetrievedChunk;
 import com.intellij.openapi.diagnostic.Logger;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -14,6 +17,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -42,6 +46,7 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
 
     // 缓存LLM模型实例（性能优化，单例模式）
     private static ChatLanguageModel cachedModel = null;
+    private static StreamingChatLanguageModel cachedStreamingModel = null;
 
     // 对话记忆（滑动窗口模式，自动保留最近的消息）
     // 当超过限制时，自动丢弃最旧的消息，不会强制结束对话
@@ -52,7 +57,8 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
     private static final String SYSTEM_PROMPT = "You are a helpful teaching assistant for a Java Enterprise Application Development course. "
             +
             "Answer student questions based on the provided course materials and conversation history. " +
-            "If no course materials are provided, use general Java knowledge and best practices to provide educational answers, and clearly indicate that the response is based on general knowledge rather than course-specific materials." +
+            "If no course materials are provided, use general Java knowledge and best practices to provide educational answers, and clearly indicate that the response is based on general knowledge rather than course-specific materials."
+            +
             "Be clear, concise, and educational in your responses. " +
             "\n\nIMPORTANT FORMATTING RULES:\n" +
             "- Use plain text only. Do NOT use Markdown formatting symbols.\n" +
@@ -244,7 +250,8 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
             message.append("Be specific and reference the concepts from the materials.");
         } else {
             message.append("No specific course materials were found for this question. ");
-            message.append("Since no course materials were found, please provide a detailed, step-by-step explanation based on standard Java and Spring knowledge from official sources like Spring documentation. Structure the answer with key concepts, examples, and best practices.");
+            message.append(
+                    "Since no course materials were found, please provide a detailed, step-by-step explanation based on standard Java and Spring knowledge from official sources like Spring documentation. Structure the answer with key concepts, examples, and best practices.");
         }
 
         return message.toString();
@@ -290,5 +297,96 @@ public class SimpleAnswerOrchestrator implements AnswerOrchestrator {
                     retrievedChunks,
                     false);
         }
+    }
+
+    @Override
+    public void generateAnswerStreaming(String userQuestion, IdeContext ideContext,
+            List<RetrievedChunk> retrievedChunks,
+            StreamingAnswerHandler handler) {
+        LOG.info("流式生成答案：问题='" + userQuestion + "'，检索到 " + retrievedChunks.size() + " 个知识块");
+
+        try {
+            // 构建用户消息内容
+            String userMessageContent = buildUserMessage(userQuestion, ideContext, retrievedChunks);
+
+            // 将用户消息添加到对话记忆
+            chatMemory.add(UserMessage.from(userMessageContent));
+            LOG.info("用户消息已添加到对话记忆");
+
+            // 获取streaming模型
+            StreamingChatLanguageModel streamingModel = getOrCreateStreamingModel();
+            LOG.info("开始流式调用DeepSeek API...");
+
+            // 用于累积完整的答案
+            final StringBuilder fullAnswer = new StringBuilder();
+
+            // 调用streaming API
+            streamingModel.generate(chatMemory.messages(), new StreamingResponseHandler<AiMessage>() {
+                @Override
+                public void onNext(String token) {
+                    // 累积token
+                    fullAnswer.append(token);
+                    // 回调UI
+                    handler.onNext(token);
+                }
+
+                @Override
+                public void onComplete(Response<AiMessage> response) {
+                    LOG.info("流式生成完成");
+
+                    // 将AI回答添加到对话记忆
+                    AiMessage aiMessage = response.content();
+                    chatMemory.add(aiMessage);
+                    LOG.info("AI回答已添加到对话记忆");
+
+                    // 构建完整的Answer对象
+                    Answer answer;
+                    if (retrievedChunks.isEmpty()) {
+                        answer = new Answer(
+                                fullAnswer.toString().trim(),
+                                Collections.emptyList(),
+                                true);
+                    } else {
+                        answer = new Answer(
+                                fullAnswer.toString().trim(),
+                                retrievedChunks,
+                                false);
+                    }
+
+                    // 通知完成
+                    handler.onComplete(answer);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    LOG.error("流式生成失败", error);
+                    handler.onError(error);
+                }
+            });
+
+        } catch (Exception e) {
+            LOG.error("流式调用失败", e);
+            handler.onError(e);
+        }
+    }
+
+    /**
+     * 获取或创建Streaming模型实例
+     */
+    private StreamingChatLanguageModel getOrCreateStreamingModel() {
+        if (cachedStreamingModel == null) {
+            String apiKey = getApiKey();
+
+            LOG.info("创建DeepSeek Streaming模型实例");
+            cachedStreamingModel = OpenAiStreamingChatModel.builder()
+                    .apiKey(apiKey)
+                    .baseUrl(DEEPSEEK_BASE_URL)
+                    .modelName(DEEPSEEK_MODEL)
+                    .temperature(0.7)
+                    .timeout(Duration.ofSeconds(60))
+                    .build();
+        }
+
+        return cachedStreamingModel;
     }
 }
