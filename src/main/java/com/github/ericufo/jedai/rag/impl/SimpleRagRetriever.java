@@ -31,14 +31,14 @@ public class SimpleRagRetriever implements RagRetriever {
 
     @Override
     public List<RetrievedChunk> search(String query, int k) {
-        LOG.info("检索查询：" + query + "，返回 top-" + k);
+        LOG.info("index query：" + query + "，return top-" + k);
         EmbeddingModel embeddingModel = createEmbeddingModel();
         Embedding queryEmbedding = embeddingModel.embed(query).content();
 
         List<EmbeddingMatch<TextSegment>> matches = EMBEDDING_STORE.findRelevant(queryEmbedding, k);
 
         List<RetrievedChunk> chunks = new ArrayList<>();
-        double threshold = 0.85; // maybe need to be tested later
+        double threshold = 0.80; // maybe need to be tested later? 0.8 seems to be a proper value
         for (EmbeddingMatch<TextSegment> match : matches) {
             if (match.score() < threshold) continue;
             TextSegment segment = match.embedded();

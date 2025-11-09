@@ -196,7 +196,7 @@ tasks {
             // 使用 Java Files API，兼容配置缓存
             val sandboxPath = sandboxDirectory.get().asFile.toPath()
             val slidesSource = projectDirPath.resolve("slides")
-            val slidesTarget = sandboxPath.resolve("slides")
+            val slidesTarget = sandboxPath.resolve("plugins/JEDAI/slides")
             
             if (Files.exists(slidesSource)) {
                 // 创建目标目录
@@ -233,7 +233,7 @@ tasks {
     runIde {
         jvmArgs = jvmArgs + listOf("-Xmx2048m")
 
-        args = args + listOf("--project-dir", sandboxDirectory.get().asFile.path)
+        //args = args + listOf("--project-dir", sandboxDirectory.get().asFile.path)
     }
     
 }

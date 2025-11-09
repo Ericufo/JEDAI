@@ -70,7 +70,7 @@ public class SimpleRagIndexer implements RagIndexer {
 
     @Override
     public IndexStats index(List<CourseMaterial> materials) {
-        LOG.info("索引课程材料：" + materials.size() + " 个文件");
+        LOG.info("index materials：" + materials.size());
 
         long startTime = System.currentTimeMillis();
 
@@ -103,7 +103,7 @@ public class SimpleRagIndexer implements RagIndexer {
     private List<TextSegment> parseAndSplit(CourseMaterial material, Path path, String fileName) {
         List<TextSegment> segments = new ArrayList<>();
         CourseMaterial.MaterialType type = material.getType();
-        DocumentSplitter splitter = DocumentSplitters.recursive(500, 100); // 统一切割器：最大500字符，重叠100
+        DocumentSplitter splitter = DocumentSplitters.recursive(500, 100); // 100 characters overlap allowed
 
         try {
             switch (type) {
@@ -168,7 +168,7 @@ public class SimpleRagIndexer implements RagIndexer {
         } catch (IOException e) {
             LOG.error("Failed to delete index file", e);
         }
-        LOG.info("清除索引");
+        LOG.info("delete index");
     }
 }
 

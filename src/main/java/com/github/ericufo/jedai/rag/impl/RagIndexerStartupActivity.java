@@ -63,21 +63,48 @@ public class RagIndexerStartupActivity implements StartupActivity {
 
     /**
      * Collect course material files in the project
-     * Example: Assume materials are in the "slides" folder under the project root, supporting PDF and Text (Markdown not supported)
+     * Example: Assume materials are in the "slides" folder under the project root, supporting PDF and Text
      */
     private List<CourseMaterial> collectCourseMaterials(Project project) {
         List<CourseMaterial> materials = new ArrayList<>();
         String basePath = project.getBasePath();
         LOG.info("Project base path: " + basePath);
-        File baseDir = new File(basePath, "slides");
-        LOG.info("Slides directory path: " + baseDir.getAbsolutePath() + ", exists: " + baseDir.exists() + ", isDirectory: " + baseDir.isDirectory());
-        if (baseDir.exists() && baseDir.isDirectory()) {
-            File[] files = baseDir.listFiles();
-            LOG.info("Found files in slides: " + (files != null ? files.length : "null"));
+
+        // use sandbox root first
+        String sandboxRoot = System.getProperty("idea.home.path");
+        LOG.info("Sandbox root path: " + sandboxRoot);
+        File sandboxRootSlides = new File(sandboxRoot, "slides");
+        if (sandboxRootSlides.exists() && sandboxRootSlides.isDirectory()) {
+            LOG.info("Using sandbox root slides");
+            collectFromDir(sandboxRootSlides, materials);
+            if (!materials.isEmpty()) return materials;
+        }
+
+        String sandboxPath = System.getProperty("idea.plugins.path");
+        if (sandboxPath != null) {
+            File sandboxSlides = new File(sandboxPath, "JEDAI/slides");
+            if (sandboxSlides.exists() && sandboxSlides.isDirectory()) {
+                LOG.info("Using sandbox slides path: " + sandboxSlides.getAbsolutePath());
+                collectFromDir(sandboxSlides, materials);
+                if (!materials.isEmpty()) return materials;
+            }
+        }
+
+        File baseSlides = new File(basePath, "slides");
+        LOG.info("Fallback to base slides path: " + baseSlides.getAbsolutePath());
+        collectFromDir(baseSlides, materials);
+
+        LOG.info("Collected materials count: " + materials.size());
+        return materials;
+    }
+
+    //helper method to collect files from dir
+    private void collectFromDir(File dir, List<CourseMaterial> materials) {
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
             if (files != null) {
                 for (File file : files) {
                     String name = file.getName().toLowerCase();
-                    LOG.info("Processing file: " + file.getName() + ", lower: " + name);
                     CourseMaterial.MaterialType type = null;
                     if (name.endsWith(".pdf")) {
                         type = CourseMaterial.MaterialType.PDF;
@@ -89,11 +116,7 @@ public class RagIndexerStartupActivity implements StartupActivity {
                     }
                 }
             }
-        } else {
-            LOG.warn("Slides directory does not exist or is not a directory.");
         }
-        LOG.info("Collected materials count: " + materials.size());
-        return materials;
     }
 
     /**
