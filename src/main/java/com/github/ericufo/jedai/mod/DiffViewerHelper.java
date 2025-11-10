@@ -81,12 +81,16 @@ public class DiffViewerHelper {
             afterContent = contentFactory.create(project, entry.getAfterText());
         }
         
+        // 构建清晰的标题
+        String fileName = new File(entry.getFilePath()).getName();
+        String title = "JEDAI Code Modification - " + fileName;
+        
         SimpleDiffRequest request = new SimpleDiffRequest(
-            proposal.getSummary(),
+            title,
             beforeContent,
             afterContent,
-            "Original",
-            "Modified by JEDAI"
+            "Current Code",
+            "Proposed Changes"
         );
         
         // 显示Diff，并在关闭后询问是否应用
@@ -103,6 +107,9 @@ public class DiffViewerHelper {
         List<DiffRequest> requests = new ArrayList<>();
         DiffContentFactory contentFactory = DiffContentFactory.getInstance();
         
+        int fileIndex = 1;
+        int totalFiles = proposal.getDiffEntries().size();
+        
         for (DiffEntry entry : proposal.getDiffEntries()) {
             VirtualFile virtualFile = findVirtualFile(project, entry.getFilePath());
             
@@ -117,15 +124,21 @@ public class DiffViewerHelper {
                 afterContent = contentFactory.create(project, entry.getAfterText());
             }
             
+            // 构建清晰的标题，显示当前文件编号
+            String fileName = new File(entry.getFilePath()).getName();
+            String title = String.format("JEDAI Code Modification [%d/%d] - %s", 
+                fileIndex, totalFiles, fileName);
+            
             SimpleDiffRequest request = new SimpleDiffRequest(
-                "File: " + new File(entry.getFilePath()).getName(),
+                title,
                 beforeContent,
                 afterContent,
-                "Original",
-                "Modified"
+                "Current Code",
+                "Proposed Changes"
             );
             
             requests.add(request);
+            fileIndex++;
         }
         
         // 创建Diff链（支持在多个文件间切换）
@@ -142,41 +155,117 @@ public class DiffViewerHelper {
     private static void promptToApplyChanges(Project project, CodeChangeProposal proposal) {
         // 在EDT线程上显示确认对话框
         javax.swing.SwingUtilities.invokeLater(() -> {
-            int result = Messages.showYesNoDialog(
-                project,
-                "Do you want to apply these changes to your code?\n\n" + 
-                proposal.getSummary() + "\n\n" +
-                "This will modify " + proposal.getDiffEntries().size() + " file(s).",
-                "Apply JEDAI Code Modification",
-                "Apply Changes",
-                "Cancel",
-                Messages.getQuestionIcon()
+            // 创建自定义确认对话框面板
+            javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+            panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            panel.setPreferredSize(new java.awt.Dimension(500, 200));
+            
+            // 顶部说明
+            javax.swing.JPanel topPanel = new javax.swing.JPanel(new java.awt.BorderLayout(5, 5));
+            javax.swing.JLabel titleLabel = new javax.swing.JLabel("Apply Code Modifications?");
+            titleLabel.setFont(titleLabel.getFont().deriveFont(java.awt.Font.BOLD, 14f));
+            topPanel.add(titleLabel, java.awt.BorderLayout.NORTH);
+            
+            javax.swing.JLabel descLabel = new javax.swing.JLabel(
+                "<html><font color='gray'>You have reviewed the diff. Do you want to apply these changes?</font></html>"
+            );
+            topPanel.add(descLabel, java.awt.BorderLayout.SOUTH);
+            panel.add(topPanel, java.awt.BorderLayout.NORTH);
+            
+            // 中间信息区域
+            javax.swing.JPanel centerPanel = new javax.swing.JPanel();
+            centerPanel.setLayout(new javax.swing.BoxLayout(centerPanel, javax.swing.BoxLayout.Y_AXIS));
+            centerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Modification Summary"));
+            
+            // 摘要信息
+            javax.swing.JLabel summaryLabel = new javax.swing.JLabel(
+                "<html><b>Description:</b> " + proposal.getSummary() + "</html>"
+            );
+            summaryLabel.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            centerPanel.add(summaryLabel);
+            centerPanel.add(javax.swing.Box.createVerticalStrut(10));
+            
+            // 文件数量
+            int fileCount = proposal.getDiffEntries().size();
+            javax.swing.JLabel fileLabel = new javax.swing.JLabel(
+                "<html><b>Files to be modified:</b> " + fileCount + " file(s)</html>"
+            );
+            fileLabel.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            centerPanel.add(fileLabel);
+            centerPanel.add(javax.swing.Box.createVerticalStrut(5));
+            
+            // 文件列表（如果文件不多，列出来）
+            if (fileCount <= 5) {
+                for (DiffEntry entry : proposal.getDiffEntries()) {
+                    String fileName = new java.io.File(entry.getFilePath()).getName();
+                    javax.swing.JLabel fileItemLabel = new javax.swing.JLabel(
+                        "<html>&nbsp;&nbsp;• " + fileName + "</html>"
+                    );
+                    fileItemLabel.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+                    centerPanel.add(fileItemLabel);
+                }
+            }
+            
+            panel.add(centerPanel, java.awt.BorderLayout.CENTER);
+            
+            // 底部警告提示
+            javax.swing.JLabel warningLabel = new javax.swing.JLabel(
+                "<html><font color='#CC7832'>Note: This action will modify your source files. Make sure you have reviewed the changes.</font></html>"
+            );
+            panel.add(warningLabel, java.awt.BorderLayout.SOUTH);
+            
+            // 显示对话框
+            int result = javax.swing.JOptionPane.showConfirmDialog(
+                null,
+                panel,
+                "JEDAI Code Modification - Confirm Changes",
+                javax.swing.JOptionPane.YES_NO_OPTION,
+                javax.swing.JOptionPane.QUESTION_MESSAGE
             );
             
-            if (result == Messages.YES) {
+            if (result == javax.swing.JOptionPane.YES_OPTION) {
                 try {
                     LOG.info("用户确认应用代码修改");
                     proposal.apply(project);
                     
+                    // 成功提示
+                    javax.swing.JPanel successPanel = new javax.swing.JPanel(new java.awt.BorderLayout(10, 10));
+                    successPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                    
+                    javax.swing.JLabel successIcon = new javax.swing.JLabel("✓", javax.swing.SwingConstants.CENTER);
+                    successIcon.setFont(successIcon.getFont().deriveFont(java.awt.Font.BOLD, 32f));
+                    successIcon.setForeground(new java.awt.Color(98, 150, 85));
+                    successPanel.add(successIcon, java.awt.BorderLayout.WEST);
+                    
+                    javax.swing.JLabel successMsg = new javax.swing.JLabel(
+                        "<html><b>Success!</b><br/>" +
+                        "Code modifications have been applied to " + fileCount + " file(s).<br/>" +
+                        "You can now review the changes in your editor.</html>"
+                    );
+                    successPanel.add(successMsg, java.awt.BorderLayout.CENTER);
+                    
                     Messages.showInfoMessage(
                         project,
-                        "Code modifications have been applied successfully!",
-                        "JEDAI Success"
+                        "Code modifications have been applied successfully!\n\n" +
+                        "Modified " + fileCount + " file(s).",
+                        "JEDAI - Success"
                     );
                 } catch (Exception e) {
                     LOG.error("应用代码修改时出错", e);
                     Messages.showErrorDialog(
                         project,
-                        "Failed to apply changes: " + e.getMessage(),
-                        "JEDAI Error"
+                        "Failed to apply changes:\n\n" + e.getMessage() + "\n\n" +
+                        "Please check the logs for more details.",
+                        "JEDAI - Error"
                     );
                 }
             } else {
                 LOG.info("用户取消应用代码修改");
                 Messages.showInfoMessage(
                     project,
-                    "Code modifications were not applied.",
-                    "JEDAI Cancelled"
+                    "Code modifications were not applied.\n\n" +
+                    "Your files remain unchanged.",
+                    "JEDAI - Cancelled"
                 );
             }
         });
@@ -228,12 +317,16 @@ public class DiffViewerHelper {
             afterContent = contentFactory.create(project, entry.getAfterText());
         }
         
+        // 构建只读预览的标题
+        String fileName = new File(entry.getFilePath()).getName();
+        String title = "JEDAI Code Modification (Preview Only) - " + fileName;
+        
         SimpleDiffRequest request = new SimpleDiffRequest(
-            proposal.getSummary() + " (Preview Only)",
+            title,
             beforeContent,
             afterContent,
-            "Original",
-            "Modified"
+            "Current Code",
+            "Preview Changes"
         );
         
         DiffManager.getInstance().showDiff(project, request);

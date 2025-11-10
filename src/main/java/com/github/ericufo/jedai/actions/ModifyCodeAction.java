@@ -108,71 +108,131 @@ public class ModifyCodeAction extends AnAction {
             templateManager = ServiceManager.getService(InstructionTemplateManager.class);
         }
         
-        // 创建带下拉建议的输入对话框
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        // 创建主面板
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        mainPanel.setPreferredSize(new Dimension(550, 280));
         
-        JLabel label = new JLabel("Enter your instruction for code modification:");
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(10));
+        // 顶部说明区域
+        JPanel topPanel = new JPanel(new BorderLayout(5, 5));
+        JLabel titleLabel = new JLabel("Describe the code modification you want to perform:");
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 13f));
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        
+        int lineCount = selectedCode.split("\n").length;
+        JLabel infoLabel = new JLabel(
+            String.format("<html><font color='gray'>Selected code: %d line(s) | You can use a template or enter custom instructions</font></html>", 
+            lineCount)
+        );
+        topPanel.add(infoLabel, BorderLayout.SOUTH);
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        
+        // 中间输入区域
+        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
+        
+        // 模板选择标签
+        JLabel templateLabel = new JLabel("Select a template or type your own instruction:");
+        centerPanel.add(templateLabel, BorderLayout.NORTH);
         
         // 使用所有模板（默认 + 自定义）
         List<String> allTemplates = templateManager.getAllTemplates();
-        JComboBox<String> comboBox = new JComboBox<>(allTemplates.toArray(new String[0]));
+        String[] templateArray = new String[allTemplates.size() + 1];
+        templateArray[0] = "-- Select a template or type below --";
+        for (int i = 0; i < allTemplates.size(); i++) {
+            templateArray[i + 1] = allTemplates.get(i);
+        }
+        
+        JComboBox<String> comboBox = new JComboBox<>(templateArray);
         comboBox.setEditable(true);
-        comboBox.setSelectedIndex(-1);
-        panel.add(comboBox);
+        comboBox.setSelectedIndex(0);
+        comboBox.setFont(comboBox.getFont().deriveFont(12f));
         
-        // 按钮面板
-        panel.add(Box.createVerticalStrut(5));
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        // 当用户选择模板时，清除提示文本
+        comboBox.addActionListener(e -> {
+            if (comboBox.getSelectedIndex() > 0) {
+                comboBox.getEditor().setItem(comboBox.getSelectedItem());
+            }
+        });
         
-        JButton saveTemplateBtn = new JButton("💾 Save as Template");
+        centerPanel.add(comboBox, BorderLayout.CENTER);
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+        
+        // 底部按钮区域
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        
+        JButton saveTemplateBtn = new JButton("Save as Template");
+        saveTemplateBtn.setToolTipText("Save the current instruction as a reusable template");
         saveTemplateBtn.addActionListener(e -> {
             Object currentText = comboBox.getEditor().getItem();
             if (currentText != null && !currentText.toString().trim().isEmpty()) {
                 String template = currentText.toString().trim();
+                if (template.equals("-- Select a template or type below --")) {
+                    Messages.showWarningDialog(
+                        "Please enter an instruction before saving as template.",
+                        "JEDAI - Invalid Input"
+                    );
+                    return;
+                }
                 templateManager.addCustomTemplate(template);
+                Messages.showInfoMessage(
+                    "Template saved successfully!\nYou can now select it from the dropdown list.",
+                    "JEDAI - Template Saved"
+                );
                 // 刷新下拉列表
                 comboBox.removeAllItems();
+                comboBox.addItem("-- Select a template or type below --");
                 for (String t : templateManager.getAllTemplates()) {
                     comboBox.addItem(t);
                 }
                 comboBox.setSelectedItem(template);
-                Messages.showInfoMessage("Template saved successfully!", "JEDAI");
             }
         });
         buttonPanel.add(saveTemplateBtn);
         
-        JButton manageTemplatesBtn = new JButton("⚙️ Manage Templates");
+        JButton manageTemplatesBtn = new JButton("Manage Templates");
+        manageTemplatesBtn.setToolTipText("View and manage your custom templates");
         manageTemplatesBtn.addActionListener(e -> {
             showManageTemplatesDialog(project);
             // 刷新下拉列表
+            String currentSelection = (String) comboBox.getSelectedItem();
             comboBox.removeAllItems();
+            comboBox.addItem("-- Select a template or type below --");
             for (String t : templateManager.getAllTemplates()) {
                 comboBox.addItem(t);
+            }
+            if (currentSelection != null && !currentSelection.equals("-- Select a template or type below --")) {
+                comboBox.setSelectedItem(currentSelection);
             }
         });
         buttonPanel.add(manageTemplatesBtn);
         
-        panel.add(buttonPanel);
+        bottomPanel.add(buttonPanel, BorderLayout.WEST);
         
-        panel.add(Box.createVerticalStrut(10));
-        JLabel infoLabel = new JLabel("<html><i>Selected " + selectedCode.split("\n").length + " line(s) of code</i></html>");
-        panel.add(infoLabel);
+        // 添加帮助提示
+        JLabel helpLabel = new JLabel(
+            "<html><font color='gray' size='2'>Tip: Default templates are always available, custom templates are saved persistently</font></html>"
+        );
+        bottomPanel.add(helpLabel, BorderLayout.SOUTH);
+        
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
         
         int result = JOptionPane.showConfirmDialog(
             null,
-            panel,
-            "JEDAI - Modify Code",
+            mainPanel,
+            "JEDAI Code Modification - Enter Instruction",
             JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE
+            JOptionPane.PLAIN_MESSAGE
         );
         
         if (result == JOptionPane.OK_OPTION) {
             Object selected = comboBox.getEditor().getItem();
-            return selected != null ? selected.toString().trim() : null;
+            if (selected != null) {
+                String instruction = selected.toString().trim();
+                if (!instruction.isEmpty() && !instruction.equals("-- Select a template or type below --")) {
+                    return instruction;
+                }
+            }
         }
         
         return null;
@@ -182,58 +242,171 @@ public class ModifyCodeAction extends AnAction {
      * 显示模板管理对话框
      */
     private void showManageTemplatesDialog(Project project) {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setPreferredSize(new Dimension(500, 300));
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        mainPanel.setPreferredSize(new Dimension(600, 400));
         
-        JLabel titleLabel = new JLabel("Manage Custom Templates:");
-        panel.add(titleLabel, BorderLayout.NORTH);
+        // 顶部标题和说明
+        JPanel topPanel = new JPanel(new BorderLayout(5, 5));
+        JLabel titleLabel = new JLabel("Manage Custom Templates");
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 14f));
+        topPanel.add(titleLabel, BorderLayout.NORTH);
+        
+        JLabel descLabel = new JLabel(
+            "<html><font color='gray'>Your custom templates are listed below. Default templates cannot be modified.</font></html>"
+        );
+        topPanel.add(descLabel, BorderLayout.SOUTH);
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        
+        // 中间列表区域
+        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
         
         // 模板列表
         DefaultListModel<String> listModel = new DefaultListModel<>();
-        for (String template : templateManager.getCustomTemplates()) {
-            listModel.addElement(template);
+        List<String> customTemplates = templateManager.getCustomTemplates();
+        
+        if (customTemplates.isEmpty()) {
+            listModel.addElement("(No custom templates saved yet)");
+        } else {
+            for (String template : customTemplates) {
+                listModel.addElement(template);
+            }
         }
         
         JList<String> templateList = new JList<>(listModel);
-        JScrollPane scrollPane = new JScrollPane(templateList);
-        panel.add(scrollPane, BorderLayout.CENTER);
+        templateList.setFont(templateList.getFont().deriveFont(12f));
+        templateList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         
-        // 按钮面板
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        JScrollPane scrollPane = new JScrollPane(templateList);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Custom Templates (" + customTemplates.size() + ")"));
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // 统计信息
+        JLabel statsLabel = new JLabel(
+            String.format(
+                "<html><font color='gray'>Total templates: %d default + %d custom = %d total</font></html>",
+                templateManager.getAllTemplates().size() - customTemplates.size(),
+                customTemplates.size(),
+                templateManager.getAllTemplates().size()
+            )
+        );
+        centerPanel.add(statsLabel, BorderLayout.SOUTH);
+        
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+        
+        // 底部按钮面板
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         
         JButton deleteBtn = new JButton("Delete Selected");
+        deleteBtn.setToolTipText("Delete the selected custom template");
         deleteBtn.addActionListener(e -> {
             int selectedIndex = templateList.getSelectedIndex();
             if (selectedIndex != -1) {
                 String template = listModel.getElementAt(selectedIndex);
-                templateManager.removeCustomTemplate(template);
-                listModel.remove(selectedIndex);
+                if (template.equals("(No custom templates saved yet)")) {
+                    return;
+                }
+                
+                int confirm = Messages.showYesNoDialog(
+                    project,
+                    "Are you sure you want to delete this template?\n\n\"" + template + "\"",
+                    "JEDAI - Confirm Delete",
+                    Messages.getQuestionIcon()
+                );
+                
+                if (confirm == Messages.YES) {
+                    templateManager.removeCustomTemplate(template);
+                    listModel.remove(selectedIndex);
+                    
+                    if (listModel.isEmpty()) {
+                        listModel.addElement("(No custom templates saved yet)");
+                    }
+                    
+                    // 更新统计信息
+                    List<String> updated = templateManager.getCustomTemplates();
+                    statsLabel.setText(
+                        String.format(
+                            "<html><font color='gray'>Total templates: %d default + %d custom = %d total</font></html>",
+                            templateManager.getAllTemplates().size() - updated.size(),
+                            updated.size(),
+                            templateManager.getAllTemplates().size()
+                        )
+                    );
+                    scrollPane.setBorder(BorderFactory.createTitledBorder("Custom Templates (" + updated.size() + ")"));
+                }
+            } else {
+                Messages.showWarningDialog(
+                    project,
+                    "Please select a template to delete.",
+                    "JEDAI - No Selection"
+                );
             }
         });
         buttonPanel.add(deleteBtn);
         
         JButton clearAllBtn = new JButton("Clear All");
+        clearAllBtn.setToolTipText("Delete all custom templates");
         clearAllBtn.addActionListener(e -> {
+            if (customTemplates.isEmpty()) {
+                Messages.showInfoMessage(
+                    project,
+                    "There are no custom templates to clear.",
+                    "JEDAI - No Templates"
+                );
+                return;
+            }
+            
             int confirm = Messages.showYesNoDialog(
                 project,
-                "Are you sure you want to delete all custom templates?",
-                "Confirm Delete",
-                Messages.getQuestionIcon()
+                "Are you sure you want to delete ALL custom templates?\n\n" +
+                "This will remove " + customTemplates.size() + " template(s).\n" +
+                "This action cannot be undone.",
+                "JEDAI - Confirm Clear All",
+                Messages.getWarningIcon()
             );
+            
             if (confirm == Messages.YES) {
                 templateManager.clearCustomTemplates();
                 listModel.clear();
+                listModel.addElement("(No custom templates saved yet)");
+                
+                // 更新统计信息
+                List<String> updated = templateManager.getCustomTemplates();
+                statsLabel.setText(
+                    String.format(
+                        "<html><font color='gray'>Total templates: %d default + %d custom = %d total</font></html>",
+                        templateManager.getAllTemplates().size() - updated.size(),
+                        updated.size(),
+                        templateManager.getAllTemplates().size()
+                    )
+                );
+                scrollPane.setBorder(BorderFactory.createTitledBorder("Custom Templates (" + updated.size() + ")"));
+                
+                Messages.showInfoMessage(
+                    project,
+                    "All custom templates have been deleted.",
+                    "JEDAI - Cleared"
+                );
             }
         });
         buttonPanel.add(clearAllBtn);
         
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        JButton closeBtn = new JButton("Close");
+        closeBtn.setToolTipText("Close this dialog");
+        closeBtn.addActionListener(e -> {
+            Window window = SwingUtilities.getWindowAncestor(mainPanel);
+            if (window != null) {
+                window.dispose();
+            }
+        });
+        buttonPanel.add(closeBtn);
+        
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         
         JOptionPane.showMessageDialog(
             null,
-            panel,
-            "JEDAI - Manage Templates",
+            mainPanel,
+            "JEDAI Code Modification - Template Manager",
             JOptionPane.PLAIN_MESSAGE
         );
     }
