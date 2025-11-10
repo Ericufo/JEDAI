@@ -13,11 +13,19 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Simple RAG retriever implementation for searching and retrieving relevant text chunks
+ */
 public class SimpleRagRetriever implements RagRetriever {
     private static final Logger LOG = Logger.getInstance(SimpleRagRetriever.class);
 
     private static final EmbeddingStore<TextSegment> EMBEDDING_STORE = SimpleRagIndexer.getEmbeddingStore();
 
+    /**
+     * Creates an instance of AllMiniLmL6V2QuantizedEmbeddingModel
+     * 
+     * @return the embedding model instance
+     */
     private static EmbeddingModel createEmbeddingModel() {
         ClassLoader cl = SimpleRagIndexer.class.getClassLoader();
         ClassLoader original = Thread.currentThread().getContextClassLoader();
@@ -29,6 +37,13 @@ public class SimpleRagRetriever implements RagRetriever {
         }
     }
 
+    /**
+     * Searches for relevant text chunks based on the query
+     * 
+     * @param query the search query string
+     * @param k the number of top results to return
+     * @return list of retrieved chunks with relevance scores
+     */
     @Override
     public List<RetrievedChunk> search(String query, int k) {
         LOG.info("index query：" + query + "，return top-" + k);
@@ -38,7 +53,7 @@ public class SimpleRagRetriever implements RagRetriever {
         List<EmbeddingMatch<TextSegment>> matches = EMBEDDING_STORE.findRelevant(queryEmbedding, k);
 
         List<RetrievedChunk> chunks = new ArrayList<>();
-        double threshold = 0.80; // maybe need to be tested later? 0.8 seems to be a proper value
+        double threshold = 0.80;
         for (EmbeddingMatch<TextSegment> match : matches) {
             if (match.score() < threshold) continue;
             TextSegment segment = match.embedded();
@@ -53,4 +68,3 @@ public class SimpleRagRetriever implements RagRetriever {
         return chunks;
     }
 }
-

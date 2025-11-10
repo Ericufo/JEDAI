@@ -18,8 +18,6 @@ import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,12 +27,14 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 
+/**
+ * Simple RAG indexer implementation for indexing and retrieving course materials
+ */
 public class SimpleRagIndexer implements RagIndexer {
     private static final Logger LOG = Logger.getInstance(SimpleRagIndexer.class);
 
     private static final InMemoryEmbeddingStore<TextSegment> EMBEDDING_STORE = new InMemoryEmbeddingStore<>();
-    //private static boolean indexed = false;
-    private static final Path INDEX_FILE_PATH = Paths.get("rag_materials_cache.json");
+    private static final Path INDEX_FILE_PATH = Paths.get("rag_materials_meta.json");
 
     static {
         // Load from persistent file if exists
@@ -42,7 +42,7 @@ public class SimpleRagIndexer implements RagIndexer {
             try {
                 String json = Files.readString(INDEX_FILE_PATH);
                 if (!json.isEmpty()) {
-                    EMBEDDING_STORE.fromJson(json);
+                    InMemoryEmbeddingStore.fromJson(json);
                 }
             } catch (IOException e) {
                 LOG.error("Failed to load index from file", e);
@@ -51,7 +51,18 @@ public class SimpleRagIndexer implements RagIndexer {
     }
 
     /**
-     *  create AllMiniLmL6V2QuantizedEmbeddingModel
+     * Gets the embedding store instance
+     * 
+     * @return the embedding store instance
+     */
+    public static EmbeddingStore<TextSegment> getEmbeddingStore() {
+        return EMBEDDING_STORE;
+    }
+
+    /**
+     * Creates an instance of AllMiniLmL6V2QuantizedEmbeddingModel
+     * 
+     * @return the embedding model instance
      */
     private static EmbeddingModel createEmbeddingModel() {
         ClassLoader cl = SimpleRagIndexer.class.getClassLoader();
@@ -64,10 +75,12 @@ public class SimpleRagIndexer implements RagIndexer {
         }
     }
 
-    public static EmbeddingStore<TextSegment> getEmbeddingStore() {
-        return EMBEDDING_STORE;
-    }
-
+    /**
+     * Indexes a list of course materials
+     * 
+     * @param materials the list of course materials to index
+     * @return indexing statistics
+     */
     @Override
     public IndexStats index(List<CourseMaterial> materials) {
         LOG.info("index materials：" + materials.size());
@@ -100,6 +113,14 @@ public class SimpleRagIndexer implements RagIndexer {
         return new IndexStats(materials.size(), allSegments.size(), indexingTime);
     }
 
+    /**
+     * Parses and splits course materials into text segments
+     * 
+     * @param material the course material
+     * @param path the file path
+     * @param fileName the file name
+     * @return list of text segments
+     */
     private List<TextSegment> parseAndSplit(CourseMaterial material, Path path, String fileName) {
         List<TextSegment> segments = new ArrayList<>();
         CourseMaterial.MaterialType type = material.getType();
@@ -149,7 +170,11 @@ public class SimpleRagIndexer implements RagIndexer {
         return segments;
     }
 
-    
+    /**
+     * Checks if the index already exists
+     * 
+     * @return true if the index file exists and is not empty, false otherwise
+     */
     @Override
     public boolean isIndexed() {
         try {
@@ -160,6 +185,9 @@ public class SimpleRagIndexer implements RagIndexer {
         }
     }
     
+    /**
+     * Clears all index data
+     */
     @Override
     public void clearIndex() {
         EMBEDDING_STORE.removeAll();
@@ -171,4 +199,3 @@ public class SimpleRagIndexer implements RagIndexer {
         LOG.info("delete index");
     }
 }
-

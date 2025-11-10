@@ -12,10 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.google.gson.Gson;
 
@@ -26,10 +23,15 @@ public class RagIndexerStartupActivity implements StartupActivity {
     private static final Logger LOG = Logger.getInstance(RagIndexerStartupActivity.class);
     private static final String MATERIALS_CACHE_FILE = "rag_materials_cache.json"; // Material cache file, fixed in root directory
 
+    /**
+     * Main activity method that runs when the project is opened
+     * 
+     * @param project the current project instance
+     */
     @Override
     public void runActivity(@NotNull Project project) {
         try {
-            Path basePath = Paths.get(project.getBasePath());
+            Path basePath = Paths.get(Objects.requireNonNull(project.getBasePath()));
             Path cachePath = basePath.resolve(MATERIALS_CACHE_FILE);
 
             RagIndexer indexer = new SimpleRagIndexer();
@@ -63,7 +65,10 @@ public class RagIndexerStartupActivity implements StartupActivity {
 
     /**
      * Collect course material files in the project
-     * Example: Assume materials are in the "slides" folder under the project root, supporting PDF and Text
+     * Example: Assume materials are in the "slides" folder under the sandbox root, supporting PDF and Text
+     * 
+     * @param project the current project instance
+     * @return list of collected course materials
      */
     private List<CourseMaterial> collectCourseMaterials(Project project) {
         List<CourseMaterial> materials = new ArrayList<>();
@@ -80,6 +85,7 @@ public class RagIndexerStartupActivity implements StartupActivity {
             if (!materials.isEmpty()) return materials;
         }
 
+        // use plugins path if available
         String sandboxPath = System.getProperty("idea.plugins.path");
         if (sandboxPath != null) {
             File sandboxSlides = new File(sandboxPath, "JEDAI/slides");
@@ -98,7 +104,12 @@ public class RagIndexerStartupActivity implements StartupActivity {
         return materials;
     }
 
-    //helper method to collect files from dir
+    /**
+     * Helper method to collect files from directory
+     * 
+     * @param dir the directory to search for files
+     * @param materials the list to add collected materials to
+     */
     private void collectFromDir(File dir, List<CourseMaterial> materials) {
         if (dir.exists() && dir.isDirectory()) {
             File[] files = dir.listFiles();
@@ -121,6 +132,11 @@ public class RagIndexerStartupActivity implements StartupActivity {
 
     /**
      * Check if materials have changed: Compare file list and last modified time
+     * 
+     * @param currentMaterials the current list of materials
+     * @param cachePath the path to the cache file
+     * @return true if materials have changed, false otherwise
+     * @throws IOException if there is an error reading the cache file
      */
     private boolean materialsChanged(List<CourseMaterial> currentMaterials, Path cachePath) throws IOException {
         if (!Files.exists(cachePath)) {
@@ -143,6 +159,10 @@ public class RagIndexerStartupActivity implements StartupActivity {
 
     /**
      * Update material cache
+     * 
+     * @param materials the list of materials to cache
+     * @param cachePath the path to the cache file
+     * @throws IOException if there is an error writing the cache file
      */
     private void updateMaterialsCache(List<CourseMaterial> materials, Path cachePath) throws IOException {
         Map<String, Long> cacheMap = new HashMap<>();

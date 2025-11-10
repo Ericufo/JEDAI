@@ -24,7 +24,6 @@ public class CourseMaterial {
 
     public enum MaterialType {
         PDF,
-        MARKDOWN,
         TEXT
     }
 }
