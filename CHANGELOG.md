@@ -2,46 +2,45 @@
 
 ## [Unreleased]
 
-## [2025-11-10]
+## [1.0.0] - 2025-11-10
 ### Added
 - UI & RAG modification
 
-## [2025-11-9]
+## [0.9.0] - 2025-11-09
 ### Added
-- 实现流式答案显示（类似 GPT 逐字输出）
-- 新增主题切换功能
-- 新增用户字体大小调整功能（5 档可选）
-- use general knowledge while insufficient context
+- Streaming answer display (similar to GPT word-by-word output)
+- Theme switching functionality
+- User font size adjustment (5 levels available)
+- Use general knowledge when context is insufficient
 
-## [2025-11-3]
+## [0.8.0] - 2025-11-03
 ### Added
-- in memory rag implemented
+- In-memory RAG implementation
 
-## [2025-11-2]
+## [0.7.0] - 2025-11-02
 ### Added
-- Rag indexer implemented
+- RAG indexer implementation
 
-
-## [2025-11-1] Part B：聊天界面与对话管理
+## [0.6.0] - 2025-11-01
 ### Added
-- 聊天界面完善：富文本显示、消息时间戳、加载动画
-- LLM 对话集成：完整调用逻辑、对话上下文记忆（5轮对话）
-- 右键询问集成："Ask JEDAI about Selection" 功能整合到主聊天窗口
-- Markdown 处理策略优化
+- Chat interface improvements: rich text display, message timestamps, loading animations
+- LLM conversation integration: complete calling logic, conversation context memory (5 rounds)
+- Right-click query integration: "Ask JEDAI about Selection" feature integrated into main chat window
+- Markdown processing strategy optimization
 
-## [2025-11-1] Part A：LLM 集成与核心功能
+## [0.5.0] - 2025-11-01
 ### Added
-- LLM 集成：成功集成 DeepSeek V3.2-exp API，使用 LangChain4j 框架
-- 核心功能：AI 驱动的代码修改、自动代码格式化、自定义指令模板系统
-- 批量修改支持、完整的修改历史功能
-- 修复工作：去除无用系统模版和注册项，去除test
+- LLM integration: successfully integrated DeepSeek V3.2-exp API using LangChain4j framework
+- Core features: AI-driven code modification, automatic code formatting, custom instruction template system
+- Batch modification support, complete modification history functionality
+- Fixes: removed unused system templates and registration items, removed tests
 
-## [2025-10-23]
+## [0.4.0] - 2025-10-23
 ### Added
-- 搭建项目基本架构
-- 完善插件 ToolWindow 界面及消息收发逻辑
-- 环境配置说明：使用本地 IDEA 安装路径加速启动
+- Project basic architecture setup
+- Plugin ToolWindow interface and message communication logic improvements
+- Environment configuration instructions: using local IDEA installation path for faster startup
 
-## [Initial]
+## [0.1.0] - 2025-10-01
 ### Added
 - Initial scaffold created from [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
