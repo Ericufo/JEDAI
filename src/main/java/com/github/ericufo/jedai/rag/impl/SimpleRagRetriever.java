@@ -20,6 +20,7 @@ public class SimpleRagRetriever implements RagRetriever {
     private static final Logger LOG = Logger.getInstance(SimpleRagRetriever.class);
 
     private static final EmbeddingStore<TextSegment> EMBEDDING_STORE = SimpleRagIndexer.getEmbeddingStore();
+    private static final EmbeddingModel EMBEDDING_MODEL = createEmbeddingModel();
 
     /**
      * Creates an instance of AllMiniLmL6V2QuantizedEmbeddingModel
@@ -47,8 +48,8 @@ public class SimpleRagRetriever implements RagRetriever {
     @Override
     public List<RetrievedChunk> search(String query, int k) {
         LOG.info("index query：" + query + "，return top-" + k);
-        EmbeddingModel embeddingModel = createEmbeddingModel();
-        Embedding queryEmbedding = embeddingModel.embed(query).content();
+
+        Embedding queryEmbedding = EMBEDDING_MODEL.embed(query).content();
 
         List<EmbeddingMatch<TextSegment>> matches = EMBEDDING_STORE.findRelevant(queryEmbedding, k);
 

@@ -21,7 +21,7 @@ import com.google.gson.Gson;
  */
 public class RagIndexerStartupActivity implements StartupActivity {
     private static final Logger LOG = Logger.getInstance(RagIndexerStartupActivity.class);
-    private static final String MATERIALS_CACHE_FILE = "rag_materials_cache.json"; // Material cache file, fixed in root directory
+    private static final String MATERIALS_CACHE_FILE = "rag_materials_cache.json";
 
     /**
      * Main activity method that runs when the project is opened

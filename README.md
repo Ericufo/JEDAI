@@ -1,188 +1,100 @@
-# JEDAI
+# JEDAI - Java Enterprise Development AI Assistant
 
-![Build](https://github.com/Ericufo/JEDAI/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
+[![Build Status](https://github.com/Ericufo/JEDAI/workflows/Build/badge.svg)](https://github.com/Ericufo/JEDAI/actions)
 
-## Template ToDo list
+JEDAI is an intelligent IntelliJ IDEA plugin designed as a teaching assistant for Java Enterprise Application Development courses. It combines RAG (Retrieval-Augmented Generation) technology with AI-powered code modification capabilities to provide contextual assistance based on course materials.
 
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [x] Get familiar with the [template documentation][template].
-- [x] Adjust the [pluginGroup](./gradle.properties) and [pluginName](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml) and [sources package](./src/main/java).
-- [ ] Adjust the plugin description in `README` (see [Tips][docs:plugin-description])
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
-- [ ] Configure the [CODECOV_TOKEN](https://docs.codecov.com/docs/quick-start) secret for automated test coverage reports on PRs
+## Features
 
-<!-- Plugin description -->
+### RAG-Powered Course Q&A
+- **Intelligent Question Answering**: Ask questions about Java programming concepts and get answers based on course lecture materials
+- **Context-Aware Responses**: Answers are generated using relevant course content as context
+- **Source Attribution**: Clear indication of whether responses are based on course materials or general knowledge
 
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
+### AI-Powered Code Modification
+- **Smart Code Refactoring**: Right-click on code selections to access AI-driven modification suggestions
+- **Visual Diff Preview**: Review AI-generated changes using IntelliJ's built-in diff viewer before applying
+- **Batch Modification Support**: Handle complex code transformation tasks efficiently
 
-This specific section is a source for the [plugin.xml](/src/main/resources/META-INF/plugin.xml) file which will be extracted by the [Gradle](/build.gradle.kts) during the build process.
+### Interactive Chat Interface
+- **Rich Text Display**: Enhanced chat interface with formatted text, timestamps, and loading animations
+- **Streaming Responses**: Real-time streaming answers similar to modern AI chat interfaces
+- **Context Memory**: Maintains conversation context with sliding window memory (5 recent exchanges)
 
-To keep everything working, do not remove `<!-- ... -->` sections.
+### User Experience
+- **Theme Customization**: Multiple theme options for personalized interface
+- **Font Size Adjustment**: 5-level font size control for optimal readability
+- **Seamless Integration**: Fully integrated with IntelliJ IDEA's native interface
 
-<!-- Plugin description end -->
+## Supported Course Materials
 
-## Development
+JEDAI can process and index various course material formats:
+- **PDF Lecture Slides**: Automatic parsing and indexing of PDF content with page-level granularity
+- **Text Documents**: Support for text-based course materials
+- **Smart Chunking**: Intelligent text segmentation with 500-character chunks and 100-character overlap
 
-### 开发日志
+## 🛠️ Quick Start
 
-**2025-10-23 更新**
+### Prerequisites
+- IntelliJ IDEA 2025.2.3 or later
+- Java 17 or later
 
-1. **已完成工作**
+### Configuration
 
-   - 搭建了项目基本架构
-   - 完善了插件 ToolWindow 界面及消息收发逻辑
-   - 当前界面可用，暂未接入实际的 LLM API
+Update `build.gradle.kts` for faster development startup:
 
-2. **环境配置说明**
+```kotlin
+intellijPlatform {
+    // Use local IDEA installation for faster startup
+    local("D:\\Program Files\\IDEA\\IntelliJ IDEA 2025.2.3")
+    
+    // Alternative: Use remote version (comment above line, uncomment below)
+    // create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
+}
+```
 
-   - 更改了一下环境配置，使用本地 IDEA 安装路径来运行插件（加速启动，避免每次下载）
-   - 需要将 `build.gradle.kts` 中的路径修改为你本地的 IDEA 安装路径
-   - 若不想使用本地路径，可取消注释，保持原来的
+## 💡 Usage
 
-   配置位置：`build.gradle.kts` 49 行
+### Using the Chat Interface
+1. Open the JEDAI tool window (`View` > `Tool Windows` > `JEDAI`)
+2. Type your question about Java programming or course concepts
+3. Receive AI-generated answers with course material context
 
-   ```kotlin
-   intellijPlatform {
-       // 使用本地IDEA安装路径（需修改为自己的路径）
-       local("D:\\Program Files\\IDEA\\IntelliJ IDEA 2025.2.3")
+### Code Modification
+1. Select code in the editor
+2. Right-click and choose `Modify Code with JEDAI`
+3. Enter your modification instructions or select from templates
+4. Review the proposed changes in the diff viewer
+5. Apply the modifications if satisfied
 
-       // 如果使用远程版本，注释掉上面一行，取消注释下面的行：
-       // create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
-   }
-   ```
+### Contextual Questions
+1. Select code in the editor
+2. Right-click and choose `Ask JEDAI about Selection`
+3. Your question will automatically include the selected code context
+4. Receive contextual answers in the chat interface
 
-**2025-11-1 更新**
+## 🔧 Technical Architecture
 
-1. **已完成工作**
+JEDAI is built on modern AI and software engineering principles:
 
-   - **LLM 集成**: 成功集成 DeepSeek V3.2-exp API
+### Core Technologies
+- **LangChain4j**: AI orchestration framework for LLM integration
+- **DeepSeek V3.2-exp**: Advanced language model for code understanding and generation
+- **In-Memory Vector Store**: Efficient semantic search and retrieval
+- **IntelliJ Platform API**: Native integration with IDE features
 
-     - 使用 LangChain4j 框架
-     - API Key 优先级：环境变量 > 系统属性 > 代码默认值
-     - 单例模式缓存模型实例（性能优化）
-     - 智能降级机制（LLM 失败时自动使用示例实现）
+### RAG Implementation
+- **Document Processing**: Automatic parsing of PDF and text materials
+- **Vector Indexing**: Semantic embedding generation using AllMiniLmL6V2QuantizedEmbeddingModel
+- **Similarity Search**: Efficient retrieval of relevant course content
+- **Context Augmentation**: Dynamic context injection for LLM prompts
 
-   - **核心功能**:
+## Acknowledgments
 
-     - AI 驱动的代码修改（选中代码 → 右键 → "Modify Code with JEDAI"）
-     - 自动代码格式化（应用修改后自动格式化）
-     - 自定义指令模板系统（持久化存储，支持添加/删除/管理）
-     - 批量修改支持（API 已实现：`proposeBatchChanges()`）
-     - 完整的修改历史功能（Tools → View JEDAI Modification History）
-       - 查看历史 Diff
-       - 重放历史修改（已修复：现可正确回退到历史代码）
-       - 搜索和清空历史
-
-   - **目前测试方式**:
-
-     ```bash
-     # 可选：设置环境变量（代码中已有默认值）
-     export DEEPSEEK_API_KEY="sk-4hrklq5w3w4x7bcz"
-
-     # 启动插件
-     ./gradlew runIde
-
-     # 使用功能
-     # 1. 选中代码 → 右键 → "Modify Code with JEDAI"
-     # 2. 输入指令或选择模板
-     # 3. 查看Diff → 应用修改
-     # 4. Tools → View JEDAI Modification History 查看历史
-     ```
-
-     需注意的是：
-     由于使用的是免费 LLM 服务，服务速率有所限制，详情如下：
-
-     RPM=12、RPD=300、TPM=12000；
-
-     服务提供商：无问芯穹<https://docs.infini-ai.com/>
-
-     LLM 模型选择：DeepSeek V3.2-exp
-
-2.**修复工作**
-   - 去除无用的系统模版，去除注册项
-   - 去除test，若后续开发有所需要再重新写
-
-**2025-11-1 更新（part B：聊天界面与对话管理）**
-
-1. **聊天界面完善**
-
-   - 富文本显示（JTextPane）：支持多种字体样式、颜色、大小
-   - 消息时间戳
-   - 加载动画：LLM 思考时显示"正在思考..."动画
-
-2. **LLM 对话集成**
-
-   - 参考已有 LLM 配置，实现完整调用逻辑
-   - 对话上下文记忆：使用 ChatMemory 滑动窗口机制（保留最近 5 轮对话）
-   - 清空对话历史按钮
-   - 异步处理优化：后台线程执行 LLM 调用，UI 保持响应
-
-3. **右键询问集成**
-
-   - "Ask JEDAI about Selection" 功能整合到主聊天窗口
-   - 选中代码 → 右键 → 自动在聊天界面显示问题和答案
-   - 显示代码上下文信息（文件路径、语言、代码片段）
-
-4. **需特别注意：Markdown 处理策略**
-
-   - **问题**：AI 回答常使用 Markdown 格式符号，需要解析
-   - **当前解决**：通过系统提示词（System Prompt）要求 AI 尽量使用纯文本格式少用 markdown，另外 ai 实现了一个简单的 Markdown 解析器，但是容易出错效果不太好
-   - **实现**：在 `SimpleAnswerOrchestrator.java` 的 `SYSTEM_PROMPT` 中添加格式规范从根源减少 Markdown 使用
-   - **后续(可能)改进**：引入新的外部依赖解析 markdown 为 html 格式然后再显示(?)但是 html 在这个插件环境容易出错，要大改前端界面，个人觉得最好还是就用纯文本简洁一点。
-
-5. **测试方式**
-
-   ```bash
-   ./gradlew runIde
-
-   # 使用聊天功能：
-   # 1. 打开JEDAI工具窗口
-   # 2. 输入问题 → 发送
-   # 3. AI自动携带对话历史回答
-   # 4. 点击"清空对话"可重置对话历史
-
-   # 使用右键询问：
-   # 1. 选中代码 → 右键 → "Ask JEDAI about Selection"
-   # 2. 输入问题 → 自动在聊天窗口显示答案
-   ```
-
-**2025-11-9 更新**
-
-- 实现流式答案显示（类似 GPT 逐字输出）
-- 新增主题切换功能
-- 新增用户字体大小调整功能（5 档可选）
-
-问题：当前课程材料检索的准确度？？
-
-## Installation
-
-- Using the IDE built-in plugin system:
-
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "JEDAI"</kbd> >
-  <kbd>Install</kbd>
-
-- Using JetBrains Marketplace:
-
-  Go to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID) and install it by clicking the <kbd>Install to ...</kbd> button in case your IDE is running.
-
-  You can also download the [latest release](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID/versions) from JetBrains Marketplace and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
-- Manually:
-
-  Download the [latest release](https://github.com/Ericufo/JEDAI/releases/latest) and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
+- Built using the [IntelliJ Platform Plugin Template](https://github.com/JetBrains/intellij-platform-plugin-template)
+- Powered by [LangChain4j](https://github.com/langchain4j/langchain4j) for AI orchestration
+- Course materials provided by Java Enterprise Application Development curriculum
 
 ---
 
-Plugin based on the [IntelliJ Platform Plugin Template][template].
-
-[template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation
+**JEDAI** - Your intelligent Java development companion within IntelliJ IDEA.
