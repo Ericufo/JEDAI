@@ -2,6 +2,17 @@
 
 [![Build Status](https://github.com/Ericufo/JEDAI/workflows/Build/badge.svg)](https://github.com/Ericufo/JEDAI/actions)
 
+<!-- Plugin description -->
+JEDAI is an intelligent IntelliJ IDEA plugin designed as a teaching assistant for Java Enterprise Application Development courses. It combines RAG (Retrieval-Augmented Generation) technology with AI-powered code modification capabilities to provide contextual assistance based on course materials.
+
+**Key Features:**
+- RAG-powered course Q&A with intelligent question answering
+- AI-driven code modification with visual diff preview
+- Interactive chat interface with streaming responses
+- Context-aware responses based on course materials
+- Seamless integration with IntelliJ IDEA's native interface
+<!-- Plugin description end -->
+
 JEDAI is an intelligent IntelliJ IDEA plugin designed as a teaching assistant for Java Enterprise Application Development courses. It combines RAG (Retrieval-Augmented Generation) technology with AI-powered code modification capabilities to provide contextual assistance based on course materials.
 
 ## Features
