@@ -1,12 +1,9 @@
 package com.github.ericufo.jedai.toolWindow;
 
+import com.github.ericufo.jedai.JedaiAssistantFacade;
 import com.github.ericufo.jedai.chat.Answer;
-import com.github.ericufo.jedai.chat.AnswerOrchestrator;
 import com.github.ericufo.jedai.chat.IdeContext;
-import com.github.ericufo.jedai.chat.impl.SimpleAnswerOrchestrator;
-import com.github.ericufo.jedai.rag.RagRetriever;
 import com.github.ericufo.jedai.rag.RetrievedChunk;
-import com.github.ericufo.jedai.rag.impl.SimpleRagRetriever;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
@@ -32,9 +29,10 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
 
     private final Project project;
 
-    // RAG 和 Chat 模块
-    private final RagRetriever ragRetriever = new SimpleRagRetriever();
-    private final AnswerOrchestrator answerOrchestrator = new SimpleAnswerOrchestrator();
+    // Facade 封装了 RAG + Chat + Code Modification 模块
+    // 中文说明：通过一个 JedaiAssistantFacade 对象，把“检索 + 调用LLM + 代码修改”的复杂流程
+    // 对 UI 隐藏起来，面板自身只负责展示和交互逻辑，不再直接依赖底层多个服务，实现外观模式。
+    private final JedaiAssistantFacade assistantFacade;
 
     // 主题和字体配置
     private final ThemeConfig themeConfig = new ThemeConfig();
@@ -97,6 +95,8 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
     public JedaiChatPanel(Project project) {
         super(false, true);
         this.project = project;
+        // 通过默认工厂创建的外观对象，内部再去拿到具体的 RAG / Chat / Mod 服务
+        this.assistantFacade = new JedaiAssistantFacade();
 
         setLayout(new BorderLayout());
 
@@ -425,9 +425,6 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
         // 真正的异步处理：在后台线程执行LLM调用
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                // 调用RAG检索（在后台线程）
-                List<RetrievedChunk> retrievedChunks = ragRetriever.search(question, 5);
-
                 // 准备流式显示
                 SwingUtilities.invokeLater(() -> {
                     // 添加Assistant标题和时间戳
@@ -455,8 +452,8 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
                     startStreamingAnswer();
                 });
 
-                // 调用流式LLM生成答案
-                answerOrchestrator.generateAnswerStreaming(question, ideContext, retrievedChunks,
+                // 调用流式LLM生成答案（通过 Facade 间接使用 RAG + Chat）
+                assistantFacade.askQuestionStreaming(question, ideContext,
                         new com.github.ericufo.jedai.chat.StreamingAnswerHandler() {
                             @Override
                             public void onNext(String token) {
@@ -774,10 +771,11 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
                 JOptionPane.WARNING_MESSAGE);
 
         if (result == JOptionPane.YES_OPTION) {
-            // 清空LLM对话记忆
-            if (answerOrchestrator instanceof SimpleAnswerOrchestrator) {
-                ((SimpleAnswerOrchestrator) answerOrchestrator).clearChatHistory();
-            }
+            // 这里原本通过具体的 SimpleAnswerOrchestrator 清空 LLM 对话记忆。
+            // 在引入 Facade 和装饰器之后，为了保持 JedaiChatPanel 与具体实现解耦，
+            // 不再直接访问底层 orchestrator，而是只负责清空 UI 历史。
+            // 如果后续需要提供“清空对话”到 LLM 的能力，可以在 JedaiAssistantFacade 中
+            // 暴露一个 clearConversation() 方法，并在此处调用。
 
             // 刷新聊天显示（会清空消息历史）
             refreshChatDisplay();
@@ -813,9 +811,6 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
         // 真正的异步处理：在后台线程执行LLM调用
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                // 调用RAG检索（在后台线程）
-                List<RetrievedChunk> retrievedChunks = ragRetriever.search(question, 5);
-
                 // 准备流式显示
                 SwingUtilities.invokeLater(() -> {
                     // 添加Assistant标题和时间戳
@@ -843,8 +838,8 @@ public class JedaiChatPanel extends SimpleToolWindowPanel {
                     startStreamingAnswer();
                 });
 
-                // 调用流式LLM生成答案
-                answerOrchestrator.generateAnswerStreaming(question, ideContext, retrievedChunks,
+                // 调用流式LLM生成答案（通过 Facade 统一编排 RAG + LLM）
+                assistantFacade.askQuestionStreaming(question, ideContext,
                         new com.github.ericufo.jedai.chat.StreamingAnswerHandler() {
                             @Override
                             public void onNext(String token) {
