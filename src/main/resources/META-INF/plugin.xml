@@ -1,0 +1,65 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>com.github.ericufo.jedai</id>
+    <name>JEDAI</name>
+    <vendor>ericufo</vendor>
+
+    <description>
+        JEDAI: AI Coding Assistant for Java Enterprise Application Development.
+        Provides RAG-based QA and code modification features.
+    </description>
+
+    <change-notes>
+        Initial release.
+    </change-notes>
+
+    <idea-version since-build="252" until-build="252.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- JEDAI ToolWindow -->
+        <toolWindow 
+            factoryClass="com.github.ericufo.jedai.toolWindow.JedaiToolWindowFactory" 
+            id="JEDAI"
+            anchor="right"
+            secondary="true"/>
+        
+        <!-- 指令模板管理器服务 -->
+        <applicationService 
+            serviceImplementation="com.github.ericufo.jedai.mod.InstructionTemplateManager"/>
+
+        <postStartupActivity implementation="com.github.ericufo.jedai.rag.impl.RagIndexerStartupActivity"/>
+    </extensions>
+
+    <actions>
+        <!-- 右键菜单：询问选中代码相关问题 -->
+        <action 
+            id="com.github.ericufo.jedai.AskWithSelectionAction" 
+            class="com.github.ericufo.jedai.actions.AskWithSelectionAction" 
+            text="Ask JEDAI about Selection"
+            description="Ask JEDAI Teaching Assistant a question about the selected code">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        
+        <!-- 右键菜单：请求AI修改代码（F2功能） -->
+        <action 
+            id="com.github.ericufo.jedai.ModifyCodeAction" 
+            class="com.github.ericufo.jedai.actions.ModifyCodeAction" 
+            text="Modify Code with JEDAI"
+            description="Request AI to modify the selected code (refactor, fix bugs, apply design patterns)">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        
+        <!-- Tools菜单：查看修改历史 -->
+        <action 
+            id="com.github.ericufo.jedai.ViewModificationHistoryAction" 
+            class="com.github.ericufo.jedai.actions.ViewModificationHistoryAction" 
+            text="View JEDAI Modification History"
+            description="View history of code modifications made by JEDAI">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>
