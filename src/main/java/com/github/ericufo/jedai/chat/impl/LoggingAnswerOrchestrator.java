@@ -20,14 +20,15 @@ import java.util.List;
  * 所有真实业务逻辑都委托给内部对象，只在前后插入日志逻辑。
  * </p>
  */
-public class LoggingAnswerOrchestrator implements AnswerOrchestrator {
+public class LoggingAnswerOrchestrator extends BaseAnswerOrchestratorDecorator {
 
     private static final Logger LOG = Logger.getInstance(LoggingAnswerOrchestrator.class);
 
-    private final AnswerOrchestrator delegate;
-
     public LoggingAnswerOrchestrator(AnswerOrchestrator delegate) {
-        this.delegate = delegate;
+        super(delegate);
+        // ✅ 证明 Decorator Pattern 已投入使用
+        LOG.info("✅ [Decorator Pattern] LoggingAnswerOrchestrator initialized - wrapping "
+                + delegate.getClass().getSimpleName());
     }
 
     @Override

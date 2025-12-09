@@ -8,6 +8,7 @@ import com.github.ericufo.jedai.mod.CodeChangeProposal;
 import com.github.ericufo.jedai.mod.CodeModificationService;
 import com.github.ericufo.jedai.rag.RagRetriever;
 import com.github.ericufo.jedai.rag.RetrievedChunk;
+import com.intellij.openapi.diagnostic.Logger;
 
 import java.util.List;
 
@@ -27,6 +28,8 @@ import java.util.List;
  */
 public class JedaiAssistantFacade {
 
+    private static final Logger LOG = Logger.getInstance(JedaiAssistantFacade.class);
+
     private final RagRetriever ragRetriever;
     private final AnswerOrchestrator answerOrchestrator;
     private final CodeModificationService codeModificationService;
@@ -36,6 +39,8 @@ public class JedaiAssistantFacade {
         this.ragRetriever = factory.createRagRetriever();
         this.answerOrchestrator = factory.createAnswerOrchestrator();
         this.codeModificationService = factory.createCodeModificationService();
+        // ✅ 证明 Facade Pattern 已投入使用
+        LOG.info("✅ [Facade Pattern] JedaiAssistantFacade initialized - unified interface ready");
     }
 
     /**

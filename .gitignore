@@ -1,4 +1,7 @@
 .DS_Store
+bin/
+*.class
+uml_and_doc/
 .gradle
 .idea
 .intellijPlatform
