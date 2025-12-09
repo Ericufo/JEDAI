@@ -14,6 +14,19 @@ public class IndexStats {
         this.indexingTimeMs = indexingTimeMs;
     }
 
+    public int getMaterialCount() {
+        return totalDocuments;
+    }
+
+    public int getChunkCount() {
+        return totalChunks;
+    }
+
+    public long getIndexingTime() {
+        return indexingTimeMs;
+    }
+
+    // 保留原有方法名以确保兼容性
     public int getTotalDocuments() {
         return totalDocuments;
     }
@@ -26,4 +39,3 @@ public class IndexStats {
         return indexingTimeMs;
     }
 }
-

@@ -73,6 +73,10 @@ dependencies {
         //implementation("dev.langchain4j:langchain4j-embeddings-bge-small-en-v15-q:0.35.0")
         //implementation("dev.langchain4j:langchain4j-easy-rag:1.0.0-beta3")
         implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2-q:0.35.0")
+        // 添加新的嵌入模型依赖
+        implementation("dev.langchain4j:langchain4j-embeddings-bge-small-en-v15-q:0.35.0")
+        implementation("dev.langchain4j:langchain4j-embeddings-bge-small-en-v15:0.35.0")
+        implementation("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:0.35.0")
         implementation("org.slf4j:slf4j-simple:2.0.16")
     }
 }
@@ -158,6 +162,7 @@ kover {
 tasks {
    withType<JavaCompile> {
        options.encoding = "UTF-8"
+       options.compilerArgs.addAll(listOf("-Xlint:-deprecation"))
    }
 
    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
