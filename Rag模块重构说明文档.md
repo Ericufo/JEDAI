@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档详细说明了Rag模块使用策略模式和管道模式进行重构的设计方案、实现细节和优势。重构旨在提高代码的可维护性、可扩展性和可测试性。
+Rag模块使用策略模式和管道模式进行重构。下面是有关重构设计方案、实现细节和优势的说明，旨在提高代码的可维护性、可扩展性和可测试性。
 
 ## 重构背景
 
@@ -27,6 +27,7 @@
 ### 策略模式应用
 
 将Rag处理过程中的各个步骤抽象为策略接口，实现策略的可插拔性。
+将之前的全部耦合在一起的文档解析策略，文档切分策略，嵌入模型策略，存储策略解耦，每个策略都有自己的接口和实现类。
 
 ### 管道模式应用
 
@@ -36,21 +37,144 @@
 
 ### 重构前类图
 
-```mermaid
-classDiagram
-    class SimpleRagIndexer {
-        +index(List~CourseMaterial~ materials) IndexStats
-        +isIndexed() boolean
-        +clearIndex() void
+
+
+### 重构前代码示例
+
+以下展示重构前的`SimpleRagIndexer`类，所有功能都耦合在一个类中
+
+;
+
+```java
+// 重构前的SimpleRagIndexer类 - 所有功能耦合在一起
+private static final InMemoryEmbeddingStore<TextSegment> EMBEDDING_STORE = new InMemoryEmbeddingStore<>();
+private static final Path INDEX_FILE_PATH = Paths.get("rag_materials_meta.json");
+    static {
+        // Load from persistent file if exists
+        if (Files.exists(INDEX_FILE_PATH)) {
+            try {
+                String json = Files.readString(INDEX_FILE_PATH);
+                if (!json.isEmpty()) {
+                    InMemoryEmbeddingStore.fromJson(json);
+                }
+            } catch (IOException e) {
+                LOG.error("Failed to load index from file", e);
+            }
+        }
     }
-    
-    class CourseMaterial {
-        +getFile() File
-        +getType() String
+
+/**
+ * Creates an instance of AllMiniLmL6V2QuantizedEmbeddingModel
+ *
+ * @return the embedding model instance
+ */
+private static EmbeddingModel createEmbeddingModel() {
+    ClassLoader cl = SimpleRagIndexer.class.getClassLoader();
+    ClassLoader original = Thread.currentThread().getContextClassLoader();
+    try {
+        Thread.currentThread().setContextClassLoader(cl);
+        return new AllMiniLmL6V2QuantizedEmbeddingModel();
+    } finally {
+        Thread.currentThread().setContextClassLoader(original);
     }
-    
-    SimpleRagIndexer --> CourseMaterial
+}
+
+/**
+ * Indexes a list of course materials
+ *
+ * @param materials the list of course materials to index
+ * @return indexing statistics
+ */
+@Override
+public IndexStats index(List<CourseMaterial> materials) {
+    LOG.info("index materials：" + materials.size());
+
+    long startTime = System.currentTimeMillis();
+
+    List<TextSegment> allSegments = new ArrayList<>();
+    for (CourseMaterial material : materials) {
+        Path path = material.getFile().toPath();
+        String fileName = material.getFile().getName();
+        List<TextSegment> segments = parseAndSplit(material, path, fileName);
+        allSegments.addAll(segments);
+    }
+
+    EmbeddingModel embeddingModel = createEmbeddingModel();
+    List<Embedding> embeddings = embeddingModel.embedAll(allSegments).content();
+
+    EMBEDDING_STORE.removeAll();
+    EMBEDDING_STORE.addAll(embeddings, allSegments);
+
+    // Persist to file
+    try {
+        Files.writeString(INDEX_FILE_PATH, EMBEDDING_STORE.serializeToJson());
+    } catch (IOException e) {
+        LOG.error("Failed to save index to file", e);
+    }
+
+    long indexingTime = System.currentTimeMillis() - startTime;
+
+    return new IndexStats(materials.size(), allSegments.size(), indexingTime);
+}
+
+/**
+ * Parses and splits course materials into text segments
+ *
+ * @param material the course material
+ * @param path the file path
+ * @param fileName the file name
+ * @return list of text segments
+ */
+private List<TextSegment> parseAndSplit(CourseMaterial material, Path path, String fileName) {
+    List<TextSegment> segments = new ArrayList<>();
+    CourseMaterial.MaterialType type = material.getType();
+    DocumentSplitter splitter = DocumentSplitters.recursive(500, 100); // 100 characters overlap allowed
+
+    try {
+        switch (type) {
+            case PDF:
+                try (PDDocument pdfDocument = PDDocument.load(material.getFile())) {
+                    PDFTextStripper stripper = new PDFTextStripper();
+                    for (int page = 1; page <= pdfDocument.getNumberOfPages(); page++) {
+                        stripper.setStartPage(page);
+                        stripper.setEndPage(page);
+                        String pageText = stripper.getText(pdfDocument);
+                        if (!pageText.trim().isEmpty()) {
+                            Document pageDoc = new Document(pageText);
+                            List<TextSegment> pageSegments = splitter.split(pageDoc);
+                            for (TextSegment seg : pageSegments) {
+                                Metadata metadata = seg.metadata()
+                                        .add("file_name", fileName)
+                                        .add("page_number", page)
+                                        .add("page_range", page + "-" + page);
+                                segments.add(TextSegment.from(seg.text(), metadata));
+                            }
+                        }
+                    }
+                }
+                break;
+            case TEXT:
+                Document textDoc = loadDocument(path, new TextDocumentParser());
+                List<TextSegment> textSegments = splitter.split(textDoc);
+                for (TextSegment seg : textSegments) {
+                    Metadata metadata = seg.metadata()
+                            .add("file_name", fileName)
+                            .add("page_number", 1)
+                            .add("page_range", "1-1");
+                    segments.add(TextSegment.from(seg.text(), metadata));
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported material type: " + type);
+        }
+    } catch (IOException e) {
+        LOG.error("Failed to parse document: " + fileName, e);
+    }
+
+    return segments;
+}
 ```
+
 
 ## 策略模式优化说明
 
@@ -163,12 +287,61 @@ classDiagram
     InMemoryStorageStrategy ..|> StorageStrategy
 ```
 
+### 策略模式代码示例
+
+以下展示使用策略模式重构后的代码结构：
+
+```java
+// 重构后的SimpleRagIndexer使用策略模式
+public class SimpleRagIndexer implements RagIndexer {
+private StrategySelector strategySelector;
+
+    public SimpleRagIndexer(StrategySelector selector) {
+        this.strategySelector = selector;
+    }
+    
+    @Override
+    public IndexStats index(List materials) {
+        IndexStats stats = new IndexStats();
+        
+        for (CourseMaterial material : materials) {
+            // 1. 选择并执行解析策略
+            ParserStrategy parser = strategySelector.selectParser(material);
+            Document document = parser.parse(material);
+            stats.documentsProcessed++;
+            
+            // 2. 选择并执行切分策略
+            SplitterStrategy splitter = strategySelector.selectSplitter("recursive");
+            List segments = splitter.split(document);
+            stats.segmentsGenerated += segments.size();
+            
+            // 3. 选择并执行嵌入策略
+            EmbeddingStrategy embedder = strategySelector.selectEmbedding("all-minilm");
+            List embeddings = embedder.embed(segments);
+            
+            // 4. 选择并执行存储策略
+            StorageStrategy storage = strategySelector.selectStorage("memory");
+            List chunks = createEmbeddedChunks(embeddings, segments, material);
+            storage.store(chunks);
+        }
+        
+        return stats;
+    }
+    
+    private List createEmbeddedChunks(List embeddings, 
+                                                    List segments, 
+                                                    CourseMaterial material) {
+        // 创建嵌入块逻辑
+        return new ArrayList<>();
+    }
+}
+```
+
 ### 策略模式优化效果
 
 1. **职责分离**：将原本集中在SimpleRagIndexer中的处理逻辑拆分为四个独立的策略接口
 2. **可扩展性**：通过StrategySelector支持策略的动态注册和选择
 3. **可配置性**：可以根据材料类型自动选择合适的解析策略
-4. **可测试性**：每个策略都可以独立测试，支持Mock策略用于测试
 
 ## 管道模式优化说明
 
@@ -245,14 +418,28 @@ classDiagram
     EmbeddingStage --> EmbeddingStrategy
     StorageStage --> StorageStrategy
 ```
+### 管道模式代码示例
+
+以下展示使用管道模式重构后的代码结构：
+
+```java
+    public static void main(String[] args) {
+        RagPipelineBuilder builder = new RagPipelineBuilder()
+            .withParserStrategy(new PdfParserStrategy())
+            .withSplitterStrategy(new RecursiveSplitterStrategy())
+            .withEmbeddingStrategy(new AllMiniLmEmbeddingStrategy())
+            .withStorageStrategy(new InMemoryStorageStrategy())
+            .withListener(new LoggingPipelineListener());
+            
+        RagIndexer indexer = new PipelineRagIndexer(builder);
+        IndexStats stats = indexer.index(materials);
+    }
+```
 
 ### 管道模式优化效果
 
 1. **流程控制**：将Rag处理流程组织为有序的管道阶段
-2. **可配置性**：通过RagPipelineBuilder支持管道的灵活构建
-3. **监控能力**：通过PipelineListener实现处理过程的实时监控
-4. **错误处理**：支持阶段级别的错误处理和恢复机制
-5. **扩展性**：可以轻松添加新的处理阶段或调整阶段顺序
+2  **扩展性**：可以轻松添加新的处理阶段或调整阶段顺序
 
 ## 核心组件说明
 
@@ -272,7 +459,6 @@ classDiagram
 - **RecursiveSplitterStrategy**: 递归切分策略
 - **SlidingWindowSplitterStrategy**: 滑动窗口切分策略
 - **AllMiniLmEmbeddingStrategy**: AllMiniLM嵌入策略
-- **MockEmbeddingStrategy**: 模拟嵌入策略（用于测试）
 - **InMemoryStorageStrategy**: 内存存储策略
 
 #### 3. 策略选择器 (StrategySelector)
@@ -289,133 +475,21 @@ classDiagram
 
 协调各个阶段的执行顺序，支持监听器机制进行状态监控。
 
-#### 3. 管道构建器 (RagPipelineBuilder)
-
-提供流畅的API来构建处理管道，支持阶段的自定义配置。
-
 ## 重构优势
 
 ### 1. 代码可维护性提升
 
 - **职责分离**：每个策略和阶段只负责单一功能
 - **接口清晰**：明确的接口定义，便于理解和维护
-- **依赖注入**：通过策略选择器实现依赖注入，降低耦合度
 
 ### 2. 扩展性增强
 
 - **策略扩展**：添加新策略只需实现相应接口并注册到选择器
 - **管道扩展**：可以轻松添加新的处理阶段或调整阶段顺序
-- **配置灵活**：支持运行时动态配置处理流程
 
 ### 3. 可测试性改善
 
 - **单元测试**：每个策略和阶段都可以独立测试
-- **集成测试**：可以测试特定的策略组合和管道配置
-- **模拟测试**：支持使用Mock策略进行测试
-
-### 4. 性能监控
-
-- **监听器机制**：通过PipelineListener监控每个阶段的执行状态
-- **性能统计**：可以统计每个阶段的执行时间和资源消耗
-- **错误处理**：支持细粒度的错误处理和恢复机制
-
-## 使用示例
-
-### 基本使用
-
-```java
-// 创建索引器
-RagIndexer indexer = new SimpleRagIndexer();
-
-// 索引材料
-IndexStats stats = indexer.index(materials);
-
-// 检索
-RagRetriever retriever = new SimpleRagRetriever();
-List<RetrievedChunk> results = retriever.search("查询内容");
-```
-
-### 自定义配置
-
-```java
-// 创建策略选择器
-StrategySelector selector = new StrategySelector();
-
-// 注册自定义策略
-selector.registerParserStrategy(new CustomParserStrategy());
-selector.registerSplitterStrategy(new CustomSplitterStrategy());
-
-// 创建自定义索引器
-RagIndexer customIndexer = new SimpleRagIndexer(selector);
-```
-
-### 管道配置
-
-```java
-// 构建自定义管道
-RagProcessingPipeline pipeline = new RagPipelineBuilder()
-    .withParserStrategy(parser)
-    .withSplitterStrategy(splitter)
-    .withEmbeddingStrategy(embedding)
-    .withStorageStrategy(storage)
-    .withListener(listener)
-    .build();
-```
-
-## 文件结构变化
-
-### 重构前结构
-
-```
-rag/
-├── RagIndexer.java
-├── RagRetriever.java
-├── CourseMaterial.java
-└── impl/
-    └── SimpleRagIndexer.java
-```
-
-### 重构后结构
-
-```
-rag/
-├── RagIndexer.java
-├── RagRetriever.java
-├── CourseMaterial.java
-├── strategy/           # 策略模式相关
-│   ├── ParserStrategy.java
-│   ├── SplitterStrategy.java
-│   ├── EmbeddingStrategy.java
-│   ├── StorageStrategy.java
-│   └── impl/          # 策略实现
-│       ├── PdfParserStrategy.java
-│       ├── TextParserStrategy.java
-│       └── ...
-├── pipeline/          # 管道模式相关
-│   ├── RagProcessingPipeline.java
-│   ├── PipelineStage.java
-│   ├── RagPipelineBuilder.java
-│   └── stages/        # 管道阶段实现
-│       ├── ParsingStage.java
-│       ├── SplittingStage.java
-│       └── ...
-└── impl/
-    └── SimpleRagIndexer.java
-```
-
-## 性能影响分析
-
-### 性能优势
-
-1. **并行处理**：管道模式支持阶段的并行执行
-2. **资源复用**：策略实例可以复用，减少对象创建开销
-3. **缓存优化**：可以针对不同策略实现特定的缓存机制
-
-### 性能开销
-
-1. **对象创建**：策略选择和管道构建需要额外的对象创建
-2. **方法调用**：策略模式增加了方法调用的层次
-3. **内存占用**：需要维护策略和管道的状态信息
 
 ## 总结
 
