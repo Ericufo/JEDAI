@@ -13,21 +13,22 @@ import java.util.List;
  * Decorator for AnswerOrchestrator that adds logging and timing.
  *
  * <p>
- * 中文说明：
- * 这是典型的“装饰器（Decorator）”实现，用来在不修改原有
+ * 说明：
+ * “装饰器（Decorator）”实现，用来在不修改原有
  * SimpleAnswerOrchestrator 代码的前提下，为答案编排器增加日志和耗时统计。
  * 该类实现与 {@link AnswerOrchestrator} 相同的接口，并持有一个内部 delegate，
  * 所有真实业务逻辑都委托给内部对象，只在前后插入日志逻辑。
  * </p>
  */
-public class LoggingAnswerOrchestrator implements AnswerOrchestrator {
+public class LoggingAnswerOrchestrator extends BaseAnswerOrchestratorDecorator {
 
     private static final Logger LOG = Logger.getInstance(LoggingAnswerOrchestrator.class);
 
-    private final AnswerOrchestrator delegate;
-
     public LoggingAnswerOrchestrator(AnswerOrchestrator delegate) {
-        this.delegate = delegate;
+        super(delegate);
+        // ✅ 证明 Decorator Pattern 已投入使用
+        LOG.info("✅ [Decorator Pattern] LoggingAnswerOrchestrator initialized - wrapping "
+                + delegate.getClass().getSimpleName());
     }
 
     @Override
